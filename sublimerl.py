@@ -1,3 +1,31 @@
+# ==========================================================================================================
+# SublimErl - A Sublime Text 2 Plugin for Erlang TDD
+# 
+# Copyright (C) 2012, Roberto Ostinelli <roberto@ostinelli.net>.
+# All rights reserved.
+#
+# BSD License
+# 
+# Redistribution and use in source and binary forms, with or without modification, are permitted provided
+# that the following conditions are met:
+#
+#  * Redistributions of source code must retain the above copyright notice, this list of conditions and the
+#	 following disclaimer.
+#  * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and
+#	 the following disclaimer in the documentation and/or other materials provided with the distribution.
+#  * Neither the name of the authors nor the names of its contributors may be used to endorse or promote
+#	 products derived from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+# WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+# PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+# ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+# TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+# HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+# NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+# ==========================================================================================================
+
 import sublime, sublime_plugin
 import sys, os, re, subprocess
 
@@ -23,22 +51,24 @@ class SublimErlCommand(sublime_plugin.TextCommand):
 		module_filename = "%s.erl" % module_name
 		module_tests_filename = "%s_tests.erl" % module_name
 
-		# get root OTP project's root die
-		project_root_dir = self.get_otp_project_root(module_tests_filename)
+		# get root OTP project's root and test dir
+		project_test_dir, project_root_dir = self.get_otp_project_root(module_tests_filename)
 		if project_root_dir == None: return
 		project_src_dir = os.path.join(project_root_dir, 'src')
-
-		# set current directory to root - needed by rebar
-		os.chdir(os.path.abspath(project_root_dir))
 
 		# rebar check
 		if self.rebar_exists() == False:
 			self.log_error("Rebar cannot be found, please download and install from <https://github.com/basho/rebar>.")
 			return
 
+		# erl check
+		if self.erl_exists() == False:
+			self.log_error("Erlang binary (erl) cannot be found.")
+			return
+
 		# test for target file existance
 		module_filepath = os.path.join(project_src_dir, module_filename)
-		if os.path.exists(module_filepath) == False:
+		if os.path.isfile(module_filepath) == False:
 			self.log_error("Target file \"%s\" could not be found." % module_filepath)
 			return
 
@@ -49,7 +79,7 @@ class SublimErlCommand(sublime_plugin.TextCommand):
 			return
 
 		# create test object & run tests
-		sublimerl_test = SublimErlTestInfo(module_filename, module_tests_filename, function_name, project_root_dir, project_src_dir, self)
+		sublimerl_test = SublimErlTestInfo(module_filename, module_tests_filename, function_name, project_root_dir, project_src_dir, project_test_dir, self)
 		sublimerl_test.run_single_test()
 
 
@@ -60,11 +90,11 @@ class SublimErlCommand(sublime_plugin.TextCommand):
 			return
 
 		# get project root
-		project_root_path_arr = os.path.dirname(filename).split(os.sep)
+		project_test_dir = os.path.dirname(filename)
+		project_root_path_arr = project_test_dir.split(os.sep)
 		project_root_path_arr.pop()
-		self.project_root_path = os.sep.join(project_root_path_arr)
 
-		return self.project_root_path
+		return (project_test_dir, os.sep.join(project_root_path_arr))
 
 
 	def get_target_module_name(self):
@@ -102,6 +132,8 @@ class SublimErlCommand(sublime_plugin.TextCommand):
 	def rebar_exists(self):
 		return self.cmd.rebar_exists()
 
+	def erl_exists(self):
+		return self.cmd.erl_exists()
 
 	def log(self, text):
 		self.panel.write_to_panel(text)
@@ -118,6 +150,9 @@ class SublimErlPanel():
 		# create panel
 		self.panel_name = 'sublimerl_panel'
 		self.output_panel = self.window.get_output_panel(self.panel_name)
+		# color scheme
+		self.output_panel.settings().set("syntax", "Packages/SublimErl/SublimErl.tmLanguage")
+		self.output_panel.settings().set("color_scheme", "Packages/SublimErl/SublimErl.tmTheme")
 
 
 	def write_to_panel(self, text):
@@ -127,19 +162,25 @@ class SublimErlPanel():
 		panel.insert(panel_edit, panel.size(), text)
 		panel.end_edit(panel_edit)
 		panel.show(panel.size())
-
+		# shot panel
 		self.window.run_command("show_panel", {"panel": "output." + self.panel_name})
+		self.window.focus_view(panel)
 
 
 class SublimErlTestInfo():
 
-	def __init__(self, module_filename, module_tests_filename, function_name, project_root_dir, project_src_dir, parent):
+	def __init__(self, module_filename, module_tests_filename, function_name, project_root_dir, project_src_dir, project_test_dir, parent):
+		# set current directory to root - needed by rebar
+		os.chdir(os.path.abspath(project_root_dir))
+
 		# save
 		self.module_filename = module_filename
 		self.module_tests_filename = module_tests_filename
 		self.function_name = function_name
 		self.project_root_dir = project_root_dir
 		self.project_src_dir = project_src_dir
+		self.project_test_dir = project_test_dir
+
 		# imported from parent
 		self.log = parent.log
 		self.log_error = parent.log_error
@@ -147,13 +188,15 @@ class SublimErlTestInfo():
 
 
 	def run_single_test(self):
+		# start single test
 		self.log("Running test \"%s\" for target module \"%s\".\n" % (self.function_name, self.module_filename))
-		self.compile_all()
+		
+		# compile all source code and test module
+		if self.cmd.compile_all(self.module_tests_filename, self.function_name) != 0: return		
 
+		# run single test
+		if self.cmd.run_single_test(self.module_tests_filename, self.function_name) != 0: return
 
-	def compile_all(self):
-		# call rebar to compile - TODO: rebar should compile in a custom directory
-		pass
 
 
 class SublimErlOsCommands():
@@ -162,12 +205,20 @@ class SublimErlOsCommands():
 		# logs
 		self.log = parent.log
 		self.log_error = parent.log_error
-		# get rebar path
+		# get paths
 		self.rebar_path = self.get_rebar_path()
+		self.erl_path = self.get_erl_path()
+
+
+	def set_env(self):
+		# TODO: find real path variable
+		env = os.environ
+		env['PATH'] = os.environ['PATH'] + ':/usr/local/bin'
+		return env
 
 
 	def execute_os_command(self, os_cmd):
-		p = subprocess.Popen(os_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+		p = subprocess.Popen(os_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, env=self.set_env())
 		stdout, stderr = p.communicate()
 		return (p.returncode, stdout, stderr)
 
@@ -176,11 +227,57 @@ class SublimErlOsCommands():
 		return self.rebar_path != None
 
 
+	def erl_exists(self):
+		return self.erl_path != None
+
+
 	def get_rebar_path(self):
 		retcode, data, sterr = self.execute_os_command('which rebar')
 		data = data.strip()
 		if retcode == 0 and len(data) > 0:
 			return data
+
+
+	def get_erl_path(self):
+		retcode, data, sterr = self.execute_os_command('which erl')
+		data = data.strip()
+		if retcode == 0 and len(data) > 0:
+			return data
+
+
+	def compile_all(self, module_tests_name, function_name):
+		# call rebar to compile -  HACK: passing in a non-existing suite forces rebar to not run the test suite
+		retcode, data, sterr = self.execute_os_command('%s eunit suite=sublimerl_unexisting_test' % (self.rebar_path))
+		if re.search(r"sublimerl_unexisting_test", data) != None:
+			# expected error returned (due to the hack)
+			return 0
+
+		# display some other error returned (compilation errors?)
+		self.log("%s" % data)
+		self.log_error("Could not compile source or test modules.")
+
+		return retcode
+		
+
+	def run_single_test(self, module_tests_filename, function_name):
+		tests_module = os.path.splitext(module_tests_filename)[0]
+		mod_function = "%s:%s" % (tests_module, function_name)
+		erl_command = "-noshell -pa .eunit -eval \"eunit:test({generator, fun %s})\" -s init stop" % mod_function
+		retcode, data, sterr = self.execute_os_command('%s %s' % (self.erl_path, erl_command))
+		if retcode != 0:
+			self.log("%s %s" % (data, sterr))
+			self.log_error("Undefined error while running tests.")
+
+		elif re.search(r"Test passed.", data):
+			self.log("[TEST PASSED]: %s" % mod_function)
+
+		else:
+			self.log(data)
+		
+
+
+
+
 
 
 
