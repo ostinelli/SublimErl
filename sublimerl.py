@@ -140,9 +140,10 @@ class SublimErlTestInfo():
 		self.function_name = function_name
 		self.project_root_dir = project_root_dir
 		self.project_src_dir = project_src_dir
-		# logs
+		# imported from parent
 		self.log = parent.log
 		self.log_error = parent.log_error
+		self.cmd = parent.cmd
 
 
 	def run_single_test(self):
@@ -151,6 +152,7 @@ class SublimErlTestInfo():
 
 
 	def compile_all(self):
+		# call rebar to compile - TODO: rebar should compile in a custom directory
 		pass
 
 
@@ -160,24 +162,8 @@ class SublimErlOsCommands():
 		# logs
 		self.log = parent.log
 		self.log_error = parent.log_error
-
 		# get rebar path
 		self.rebar_path = self.get_rebar_path()
-		
-
-
-	# def set_env(self):
-	# 	# get user .bash_profile
-	# 	bash_profile = os.path.join(os.getenv('HOME'), '.bash_profile')
-
-	# 	self.log(os.getenv('PATH'))
-	# 	if os.path.exists(bash_profile):
-	# 		# source
-	# 		p = subprocess.Popen(". %s; env" % bash_profile, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-	# 		data, stderr = p.communicate()
-	# 		env = dict((line.split("=", 1) for line in data.splitlines()))
-			# TODO: SYSTEM LEAKS!!
-			# os.putenv('PATH', env['PATH'] + ':/usr/local/bin')
 
 
 	def execute_os_command(self, os_cmd):
@@ -192,8 +178,9 @@ class SublimErlOsCommands():
 
 	def get_rebar_path(self):
 		retcode, data, sterr = self.execute_os_command('which rebar')
-		if retcode != 0 or len(data) > 0:
-			return data.strip()
+		data = data.strip()
+		if retcode == 0 and len(data) > 0:
+			return data
 
 
 
