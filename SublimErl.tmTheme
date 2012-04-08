@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>comment</key>
+  <string>SublimErl Theme</string>
+  <key>name</key>
+  <string>SublimErl</string>
+  <key>settings</key>
+  <array>
+    <dict>
+      <key>name</key>
+      <string>test pass</string>
+      <key>scope</key>
+      <string>test.pass</string>
+      <key>settings</key>
+      <dict>
+        <key>foreground</key>
+        <string>#008400</string>
+      </dict>
+    </dict>
+    <dict>
+      <key>name</key>
+      <string>test fail</string>
+      <key>scope</key>
+      <string>test.fail</string>
+      <key>settings</key>
+      <dict>
+        <key>foreground</key>
+        <string>#840000</string>
+      </dict>
+    </dict>
+    <dict>
+      <key>name</key>
+      <string>test aborted</string>
+      <key>scope</key>
+      <string>test.aborted</string>
+      <key>settings</key>
+      <dict>
+        <key>foreground</key>
+        <string>#a57400</string>
+      </dict>
+    </dict>
+  </array>
+  <key>uuid</key>
+  <string>72174d10-bb12-11e0-962b-112233445566</string>
+</dict>
+</plist>
