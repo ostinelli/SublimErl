@@ -164,7 +164,6 @@ class SublimErlPanel():
 		panel.show(panel.size())
 		# shot panel
 		self.window.run_command("show_panel", {"panel": "output." + self.panel_name})
-		self.window.focus_view(panel)
 
 
 class SublimErlTestInfo():
@@ -269,7 +268,7 @@ class SublimErlOsCommands():
 			self.log_error("Undefined error while running tests.")
 
 		elif re.search(r"Test passed.", data):
-			self.log("[TEST PASSED]: %s" % mod_function)
+			self.log("=> TEST PASSED.")
 
 		else:
 			self.log(data)

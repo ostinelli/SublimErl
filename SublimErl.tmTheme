@@ -9,6 +9,23 @@
   <key>settings</key>
   <array>
     <dict>
+      <key>settings</key>
+      <dict>
+        <key>background</key>
+        <string>#00172c</string>
+        <key>caret</key>
+        <string>#A7A7A7</string>
+        <key>foreground</key>
+        <string>#F8F8F8</string>
+        <key>invisibles</key>
+        <string>#CAE2FB3D</string>
+        <key>lineHighlight</key>
+        <string>#FFFFFF0D</string>
+        <key>selection</key>
+        <string>#6f6f6f</string>
+      </dict>
+    </dict>
+    <dict>
       <key>name</key>
       <string>test pass</string>
       <key>scope</key>
@@ -16,7 +33,7 @@
       <key>settings</key>
       <dict>
         <key>foreground</key>
-        <string>#008400</string>
+        <string>#00b70d</string>
       </dict>
     </dict>
     <dict>
@@ -27,7 +44,7 @@
       <key>settings</key>
       <dict>
         <key>foreground</key>
-        <string>#840000</string>
+        <string>#b70000</string>
       </dict>
     </dict>
     <dict>
@@ -38,7 +55,7 @@
       <key>settings</key>
       <dict>
         <key>foreground</key>
-        <string>#a57400</string>
+        <string>#d8d000</string>
       </dict>
     </dict>
   </array>
