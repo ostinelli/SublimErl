@@ -1,4 +1,5 @@
 *.pyc
+*.cache
 
 # OSX
 .DS_Store
