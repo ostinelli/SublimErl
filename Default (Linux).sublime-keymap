@@ -1,0 +1,3 @@
+[
+	{ "keys": ["ctrl+shift+f8"], "command": "sublim_erl" }
+]
