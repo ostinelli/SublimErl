@@ -6,16 +6,30 @@
   <string>SublimErl</string>
   <key>patterns</key>
   <array>
-
     <dict>
       <key>comment</key>
       <string>test pass</string>
       <key>match</key>
-      <string>TEST PASSED</string>
+      <string>mymodule_tests:\d+: [a-zA-Z0-9_]+...\*failed\*</string>
+      <key>name</key>
+      <string>test.fail</string>
+    </dict>
+    <dict>
+      <key>comment</key>
+      <string>test pass</string>
+      <key>match</key>
+      <string>\d+ TEST\(S\) FAILED</string>
+      <key>name</key>
+      <string>test.fail</string>
+    </dict>
+    <dict>
+      <key>comment</key>
+      <string>test pass</string>
+      <key>match</key>
+      <string>(\d+ )?TEST(S)? PASSED</string>
       <key>name</key>
       <string>test.pass</string>
     </dict>
-
     <dict>
       <key>comment</key>
       <string>aborted</string>
@@ -24,7 +38,6 @@
       <key>name</key>
       <string>test.aborted</string>
     </dict>
-
   </array>
   <key>scopeName</key>
   <string>tests.erlang</string>

@@ -29,11 +29,22 @@
       <key>name</key>
       <string>test pass</string>
       <key>scope</key>
+      <string>test.definition</string>
+      <key>settings</key>
+      <dict>
+        <key>foreground</key>
+        <string>#90d8d5</string>
+      </dict>
+    </dict>
+    <dict>
+      <key>name</key>
+      <string>test pass</string>
+      <key>scope</key>
       <string>test.pass</string>
       <key>settings</key>
       <dict>
         <key>foreground</key>
-        <string>#00b70d</string>
+        <string>#00ff00</string>
       </dict>
     </dict>
     <dict>
@@ -44,7 +55,7 @@
       <key>settings</key>
       <dict>
         <key>foreground</key>
-        <string>#b70000</string>
+        <string>#ff0000</string>
       </dict>
     </dict>
     <dict>

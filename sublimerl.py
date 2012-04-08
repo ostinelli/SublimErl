@@ -268,10 +268,17 @@ class SublimErlOsCommands():
 			self.log_error("Undefined error while running tests.")
 
 		elif re.search(r"Test passed.", data):
-			self.log("=> TEST PASSED.")
+			self.log("\n=> TEST PASSED.\n")
+
+		elif re.search(r"All 2 tests passed.", data):
+			passed_count = re.search(r"All (\d+) tests passed.", data).group(1)
+			self.log("\n=> %s TESTS PASSED.\n" % passed_count)
 
 		else:
+			# get count of test failed
 			self.log(data)
+			failed_count = re.search(r"Failed: (\d+).", data).group(1)
+			self.log("\n=> %s TEST(S) FAILED.\n" % failed_count)
 		
 
 
