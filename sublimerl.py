@@ -49,7 +49,7 @@ class SublimErlListener(sublime_plugin.EventListener):
 
 	def on_post_save(self, view):
 		# a view has been saved
-		core = SublimErlCore(view)
+		core = SublimErlCore(view, panel=False)
 		core.set_cwd_to_otp_project_root()
 		core.test_runner.compile_all()
 
@@ -57,14 +57,10 @@ class SublimErlListener(sublime_plugin.EventListener):
 # test prepare core
 class SublimErlCore():
 
-	def __init__(self, view):
+	def __init__(self, view, panel=True):
 		self.view = view
 		self.test_runner = SublimErlTestRunner(self)
-		self.init_panel()
-
-
-	def init_panel(self):
-		self.panel = SublimErlPanel(self.view)
+		if panel == True: self.panel = SublimErlPanel(self.view)
 
 		
 	def set_cwd_to_otp_project_root(self):
@@ -84,12 +80,11 @@ class SublimErlCore():
 		if SUBLIMERL_CURRENT_TEST == None and new == False: return
 
 		# init test
-		self.init_panel()
 		self.log("Starting tests (SublimErl v%s).\n" % SUBLIMERL_VERSION)
 
 		if new == True:
 			# file is saved?
-			if view.is_scratch():
+			if self.view.is_scratch():
 				self.log_error("This file has not been saved on disk: cannot start tests.")
 				return
 			self.set_cwd_to_otp_project_root()
