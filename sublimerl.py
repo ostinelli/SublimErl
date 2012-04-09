@@ -45,6 +45,15 @@ class SublimErlRedoCommand(sublime_plugin.TextCommand):
 		SublimErlCore(self.view).start_test(new=False)
 
 
+class SublimErlListener(sublime_plugin.EventListener):
+
+	def on_post_save(self, view):
+		# a view has been saved
+		core = SublimErlCore(view)
+		core.set_cwd_to_otp_project_root()
+		core.test_runner.compile_all()
+
+
 # test prepare core
 class SublimErlCore():
 
@@ -57,6 +66,17 @@ class SublimErlCore():
 	def init_panel(self):
 		self.panel = SublimErlPanel(self.view)
 
+		
+	def set_cwd_to_otp_project_root(self):
+		# get project root
+		project_test_dir = os.path.dirname(self.view.file_name())
+		project_root_path_arr = project_test_dir.split(os.sep)
+		project_root_path_arr.pop()
+		project_root_dir = os.sep.join(project_root_path_arr)
+
+		# set current directory to root - needed by rebar
+		os.chdir(os.path.abspath(project_root_dir))
+
 
 	def start_test(self, new=True):
 		# do not continue if no previous test exists and a redo was asked
@@ -68,8 +88,14 @@ class SublimErlCore():
 		self.log("Starting tests (SublimErl v%s).\n" % SUBLIMERL_VERSION)
 
 		if new == True:
+			# file is saved?
+			if view.is_scratch():
+				self.log_error("This file has not been saved on disk: cannot start tests.")
+				return
+			self.set_cwd_to_otp_project_root()
+
 			# reset test
-			self.sublimerl_current_test = None
+			SUBLIMERL_CURRENT_TEST = None
 
 			# get module and module_tests filename
 			module_tests_name = self.get_test_module_name()
@@ -84,13 +110,7 @@ class SublimErlCore():
 			else:
 				# tests are in different files
 				module_name = module_tests_name[0:pos]
-
-			module_tests_filename = "%s.erl" % module_tests_name
 			module_filename = "%s.erl" % module_name
-
-			# get root OTP project's root dir
-			project_root_dir = self.get_otp_project_root(module_tests_filename)
-			if project_root_dir == None: return
 
 			# rebar check
 			if self.rebar_exists() == False:
@@ -113,24 +133,6 @@ class SublimErlCore():
 
 		# run test
 		self.test_runner.start_test(module_filename, module_tests_name, function_name)
-
-
-	def get_otp_project_root(self, module_tests_filename):
-		filename = self.view.file_name()
-		if filename == None:
-			self.log_error("This module (\"%s\") has not been saved on disk: cannot retrieve project root." % module_tests_filename)
-			return
-
-		# get project root
-		project_test_dir = os.path.dirname(filename)
-		project_root_path_arr = project_test_dir.split(os.sep)
-		project_root_path_arr.pop()
-		project_root_dir = os.sep.join(project_root_path_arr)
-
-		# set current directory to root - needed by rebar
-		os.chdir(os.path.abspath(project_root_dir))
-
-		return project_root_dir
 
 
 	def get_test_module_name(self):
@@ -209,27 +211,13 @@ class SublimErlTestRunner():
 
 	def __init__(self, parent):
 		# imported from parent
+
 		self.log = parent.log
 		self.log_error = parent.log_error
 
 		# get paths
 		self.rebar_path = self.get_rebar_path()
 		self.erl_path = self.get_erl_path()
-
-
-	def start_test(self, module_filename, module_tests_name, function_name):
-		if function_name != None:
-			# specific function provided, start single test
-			self.log("Running test \"%s:%s\" for target module \"%s\".\n" % (module_tests_name, function_name, module_filename))
-			# compile all source code and test module
-			if self.compile_eunit_no_run() != 0: return		
-			# run single test
-			self.run_single_test(module_tests_name, function_name)
-		else:
-			# run all test functions in file
-			self.log("Running all tests in module \"%s.erl\" for target module \"%s\".\n" % (module_tests_name, module_filename))
-			# compile all source code and test module
-			self.compile_eunit_run_suite(module_tests_name)
 
 
 	def set_env(self):
@@ -268,13 +256,32 @@ class SublimErlTestRunner():
 			return data
 
 
+	def start_test(self, module_filename, module_tests_name, function_name):
+		if function_name != None:
+			# specific function provided, start single test
+			self.log("Running test \"%s:%s\" for target module \"%s\".\n" % (module_tests_name, function_name, module_filename))
+			# compile all source code and test module
+			if self.compile_eunit_no_run() != 0: return		
+			# run single test
+			self.run_single_test(module_tests_name, function_name)
+		else:
+			# run all test functions in file
+			self.log("Running all tests in module \"%s.erl\" for target module \"%s\".\n" % (module_tests_name, module_filename))
+			# compile all source code and test module
+			self.compile_eunit_run_suite(module_tests_name)
+
+
+	def compile_all(self):
+		# compile to ebin
+		retcode, data, sterr = self.execute_os_command('%s compile' % self.rebar_path)
+
+
 	def compile_eunit_no_run(self):
 		# call rebar to compile -  HACK: passing in a non-existing suite forces rebar to not run the test suite
 		retcode, data, sterr = self.execute_os_command('%s eunit suite=sublimerl_unexisting_test' % self.rebar_path)
 		if re.search(r"sublimerl_unexisting_test", data) != None:
 			# expected error returned (due to the hack)
 			return 0
-
 		# interpret
 		self.interpret_test_results(retcode, data, sterr)
 
