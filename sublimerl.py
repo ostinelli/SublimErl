@@ -71,18 +71,24 @@ class SublimErlCore():
 			# reset test
 			self.sublimerl_current_test = None
 
-			# is this a test module?
-			module_name = self.get_target_module_name()
-			if module_name == None:
-				self.log_error("This isn't an Eunit test module (declared module name doesn't end in _tests, or cannot find module declaration).")
+			# get module and module_tests filename
+			module_tests_name = self.get_test_module_name()
+			if module_tests_name == None:
+				self.log_error("Module declaration could not be found: add a -module/1 directive.")
 				return
+			pos = module_tests_name.find("_tests")
+			if pos != -1:
+				# tests are in the same file
+				module_name = module_tests_name
+			else:
+				# tests are in different files
+				module_name = module_tests_name[0:pos]
+			module_tests_filename = "%s.erl" % module_tests_name
 			module_filename = "%s.erl" % module_name
-			module_tests_filename = "%s_tests.erl" % module_name
 
-			# get root OTP project's root and test dir
-			project_test_dir, project_root_dir = self.get_otp_project_root(module_tests_filename)
+			# get root OTP project's root dir
+			project_root_dir = self.get_otp_project_root(module_tests_filename)
 			if project_root_dir == None: return
-			project_src_dir = os.path.join(project_root_dir, 'src')
 
 			# rebar check
 			if self.rebar_exists() == False:
@@ -92,12 +98,6 @@ class SublimErlCore():
 			# erl check
 			if self.erl_exists() == False:
 				self.log_error("Erlang binary (erl) cannot be found.")
-				return
-
-			# test for target file existance
-			module_filepath = os.path.join(project_src_dir, module_filename)
-			if os.path.isfile(module_filepath) == False:
-				self.log_error("Target file \"%s\" could not be found." % module_filepath)
 				return
 
 			# get function name depending on cursor position
@@ -131,14 +131,15 @@ class SublimErlCore():
 		# set current directory to root - needed by rebar
 		os.chdir(os.path.abspath(project_root_dir))
 
-		return (project_test_dir, project_root_dir)
+		return project_root_dir
 
 
-	def get_target_module_name(self):
-		# find module declaration and get target module name
-		module_region = self.view.find(r"^\s*-module\((?:[a-zA-Z0-9_]+)_tests\)\.", 0)
+	def get_test_module_name(self):
+		# find module declaration and get module name
+		module_region = self.view.find(r"^\s*-module\((?:[a-zA-Z0-9_]+)\)\.", 0)
 		if module_region != None:
-			return re.match(r"^\s*-module\(([a-zA-Z0-9_]+)_tests\)\.", self.view.substr(module_region)).group(1)	
+			m = re.match(r"^\s*-module\(([a-zA-Z0-9_]+)\)\.", self.view.substr(module_region))
+			return m.group(1)
 
 
 	def get_test_function_name(self):
