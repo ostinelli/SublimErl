@@ -30,57 +30,91 @@ import sublime, sublime_plugin
 import sys, os, re, subprocess
 
 SUBLIMERL_VERSION = '0.1'
+SUBLIMERL_CORE = None
 
+# start new test
 class SublimErlCommand(sublime_plugin.TextCommand):
 	def run(self, edit):
-		# init
-		self.panel = SublimErlPanel(self.view)
+		global SUBLIMERL_CORE
+		if SUBLIMERL_CORE == None: SUBLIMERL_CORE = SublimErlCore(self.view)
+		SUBLIMERL_CORE.start_test()
+
+# redo previous test
+class SublimErlRedoCommand(sublime_plugin.TextCommand):
+	def run(self, edit):
+		global SUBLIMERL_CORE
+		if SUBLIMERL_CORE == None: return
+		SUBLIMERL_CORE.start_test(new=False)
+
+
+
+class SublimErlCore():
+
+	def __init__(self, view):
+		self.view = view
 		self.cmd = SublimErlOsCommands(self)
-		# start
-		self.main()
+		self.sublimerl_current_test = None
+		self.init_panel()
 
 
-	def main(self):
+	def init_panel(self):
+		self.panel = SublimErlPanel(self.view)
+
+
+	def start_test(self, new=True):
+		# do not continue if no previous test exists and a redo was asked
+		if self.sublimerl_current_test == None and new == False: return
+
+		# init test
+		self.init_panel()
 		self.log("Starting tests (SublimErl v%s).\n" % SUBLIMERL_VERSION)
 
-		# is this a test module?
-		module_name = self.get_target_module_name()
-		if module_name == None:
-			self.log_error("This isn't an Eunit test module (declared module name doesn't end in _tests, or cannot find module declaration).")
-			return
-		module_filename = "%s.erl" % module_name
-		module_tests_filename = "%s_tests.erl" % module_name
+		if new == True:
+			# reset test
+			self.sublimerl_current_test = None
 
-		# get root OTP project's root and test dir
-		project_test_dir, project_root_dir = self.get_otp_project_root(module_tests_filename)
-		if project_root_dir == None: return
-		project_src_dir = os.path.join(project_root_dir, 'src')
+			# is this a test module?
+			module_name = self.get_target_module_name()
+			if module_name == None:
+				self.log_error("This isn't an Eunit test module (declared module name doesn't end in _tests, or cannot find module declaration).")
+				return
+			module_filename = "%s.erl" % module_name
+			module_tests_filename = "%s_tests.erl" % module_name
 
-		# rebar check
-		if self.rebar_exists() == False:
-			self.log_error("Rebar cannot be found, please download and install from <https://github.com/basho/rebar>.")
-			return
+			# get root OTP project's root and test dir
+			project_test_dir, project_root_dir = self.get_otp_project_root(module_tests_filename)
+			if project_root_dir == None: return
+			project_src_dir = os.path.join(project_root_dir, 'src')
 
-		# erl check
-		if self.erl_exists() == False:
-			self.log_error("Erlang binary (erl) cannot be found.")
-			return
+			# rebar check
+			if self.rebar_exists() == False:
+				self.log_error("Rebar cannot be found, please download and install from <https://github.com/basho/rebar>.")
+				return
 
-		# test for target file existance
-		module_filepath = os.path.join(project_src_dir, module_filename)
-		if os.path.isfile(module_filepath) == False:
-			self.log_error("Target file \"%s\" could not be found." % module_filepath)
-			return
+			# erl check
+			if self.erl_exists() == False:
+				self.log_error("Erlang binary (erl) cannot be found.")
+				return
 
-		# get function name depending on cursor position
-		function_name = self.get_test_function_name()
-		if function_name == None:
-			self.log_error("Cannot get test function name: cursor is not scoped to a test function.")
-			return
+			# test for target file existance
+			module_filepath = os.path.join(project_src_dir, module_filename)
+			if os.path.isfile(module_filepath) == False:
+				self.log_error("Target file \"%s\" could not be found." % module_filepath)
+				return
 
-		# create test object & run tests
-		sublimerl_test = SublimErlTestInfo(module_filename, module_tests_filename, function_name, project_root_dir, project_src_dir, project_test_dir, self)
-		sublimerl_test.run_single_test()
+			# get function name depending on cursor position
+			function_name = self.get_test_function_name()
+			if function_name == None:
+				self.log_error("Cannot get test function name: cursor is not scoped to a test function.")
+				return
+
+			# create test object & run tests
+			sublimerl_test = SublimErlTest(module_filename, module_tests_filename, function_name, project_root_dir, project_src_dir, project_test_dir, self)
+			# save test
+			self.sublimerl_current_test = sublimerl_test
+		
+		# run test
+		self.sublimerl_current_test.run_single_test()
 
 
 	def get_otp_project_root(self, module_tests_filename):
@@ -166,7 +200,8 @@ class SublimErlPanel():
 		self.window.run_command("show_panel", {"panel": "output." + self.panel_name})
 
 
-class SublimErlTestInfo():
+
+class SublimErlTest():
 
 	def __init__(self, module_filename, module_tests_filename, function_name, project_root_dir, project_src_dir, project_test_dir, parent):
 		# set current directory to root - needed by rebar
@@ -211,6 +246,7 @@ class SublimErlOsCommands():
 
 	def set_env(self):
 		# TODO: find real path variable
+		# TODO: save in init var
 		env = os.environ
 		env['PATH'] = os.environ['PATH'] + ':/usr/local/bin'
 		return env
@@ -280,10 +316,6 @@ class SublimErlOsCommands():
 			failed_count = re.search(r"Failed: (\d+).", data).group(1)
 			self.log("\n=> %s TEST(S) FAILED.\n" % failed_count)
 		
-
-
-
-
 
 
 

@@ -1,3 +1,4 @@
 [
-	{ "keys": ["super+shift+f8"], "command": "sublim_erl" }
+	{ "keys": ["super+shift+f8"], "command": "sublim_erl" },
+	{ "keys": ["super+f8"], "command": "sublim_erl_redo" }
 ]
