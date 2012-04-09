@@ -275,11 +275,8 @@ class SublimErlTestRunner():
 			# expected error returned (due to the hack)
 			return 0
 
-		# display some other error returned (compilation errors?)
-		self.log("%s %s" % (data, sterr))
-		self.log_error("Could not compile source or test modules.")
-
-		return retcode
+		# interpret
+		self.interpret_test_results(retcode, data, sterr)
 
 	
 	def compile_eunit_run_suite(self, suite):
@@ -303,16 +300,18 @@ class SublimErlTestRunner():
 			# single test passed
 			self.log("\n=> TEST PASSED.\n")
 
-		elif re.search(r"All 2 tests passed.", data):
+		elif re.search(r"All \d+ tests passed.", data):
 			# multiple tests passed
 			passed_count = re.search(r"All (\d+) tests passed.", data).group(1)
 			self.log("\n=> %s TESTS PASSED.\n" % passed_count)
 
-		else:
+		elif re.search(r"Failed: \d+.", data):
 			# some tests failed
 			self.log('\n' + data)
 			failed_count = re.search(r"Failed: (\d+).", data).group(1)
 			self.log("\n=> %s TEST(S) FAILED.\n" % failed_count)
 
-
+		else:
+			self.log('\n' + data)
+			self.log("\n=> TEST(S) FAILED.\n")
 
