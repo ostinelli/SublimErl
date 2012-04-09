@@ -76,13 +76,15 @@ class SublimErlCore():
 			if module_tests_name == None:
 				self.log_error("Module declaration could not be found: add a -module/1 directive.")
 				return
+
 			pos = module_tests_name.find("_tests")
-			if pos != -1:
+			if pos == -1:
 				# tests are in the same file
 				module_name = module_tests_name
 			else:
 				# tests are in different files
 				module_name = module_tests_name[0:pos]
+
 			module_tests_filename = "%s.erl" % module_tests_name
 			module_filename = "%s.erl" % module_name
 
@@ -107,13 +109,13 @@ class SublimErlCore():
 				return
 
 			# save test
-			SUBLIMERL_CURRENT_TEST = (module_filename, module_tests_filename, function_name)
+			SUBLIMERL_CURRENT_TEST = (module_filename, module_tests_name, function_name)
 		
 		else:
-			module_filename, module_tests_filename, function_name = SUBLIMERL_CURRENT_TEST
+			module_filename, module_tests_name, function_name = SUBLIMERL_CURRENT_TEST
 
 		# run test
-		self.test_runner.start_single_test(module_filename, module_tests_filename, function_name)
+		self.test_runner.start_single_test(module_filename, module_tests_name, function_name)
 
 
 	def get_otp_project_root(self, module_tests_filename):
@@ -218,15 +220,15 @@ class SublimErlTestRunner():
 		self.erl_path = self.get_erl_path()
 
 
-	def start_single_test(self, module_filename, module_tests_filename, function_name):
+	def start_single_test(self, module_filename, module_tests_name, function_name):
 		# start single test
-		self.log("Running test \"%s\" for target module \"%s\".\n" % (function_name, module_filename))
+		self.log("Running test \"%s:%s\" for target module \"%s\".\n" % (module_tests_name, function_name, module_filename))
 		
 		# compile all source code and test module
 		if self.compile_all_eunit() != 0: return		
 
 		# run single test
-		if self.run_single_test(module_tests_filename, function_name) != 0: return
+		if self.run_single_test(module_tests_name, function_name) != 0: return
 
 
 	def set_env(self):
@@ -267,7 +269,6 @@ class SublimErlTestRunner():
 
 	def compile_all_eunit(self):
 		# call rebar to compile -  HACK: passing in a non-existing suite forces rebar to not run the test suite
-		self.log('%s eunit suite=sublimerl_unexisting_test' % (self.rebar_path))
 		retcode, data, sterr = self.execute_os_command('%s eunit suite=sublimerl_unexisting_test' % (self.rebar_path))
 		if re.search(r"sublimerl_unexisting_test", data) != None:
 			# expected error returned (due to the hack)
@@ -280,10 +281,9 @@ class SublimErlTestRunner():
 		return retcode
 		
 
-	def run_single_test(self, module_tests_filename, function_name):
+	def run_single_test(self, module_tests_name, function_name):
 		# build & run erl command
-		tests_module = os.path.splitext(module_tests_filename)[0]
-		mod_function = "%s:%s" % (tests_module, function_name)
+		mod_function = "%s:%s" % (module_tests_name, function_name)
 		erl_command = "-noshell -pa .eunit -eval \"eunit:test({generator, fun %s})\" -s init stop" % mod_function
 		retcode, data, sterr = self.execute_os_command('%s %s' % (self.erl_path, erl_command))
 
