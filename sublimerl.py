@@ -104,9 +104,6 @@ class SublimErlCore():
 
 			# get function name depending on cursor position
 			function_name = self.get_test_function_name()
-			if function_name == None:
-				self.log_error("Cannot get test function name: cursor is not scoped to a test function.")
-				return
 
 			# save test
 			SUBLIMERL_CURRENT_TEST = (module_filename, module_tests_name, function_name)
@@ -115,7 +112,7 @@ class SublimErlCore():
 			module_filename, module_tests_name, function_name = SUBLIMERL_CURRENT_TEST
 
 		# run test
-		self.test_runner.start_single_test(module_filename, module_tests_name, function_name)
+		self.test_runner.start_test(module_filename, module_tests_name, function_name)
 
 
 	def get_otp_project_root(self, module_tests_filename):
@@ -220,15 +217,19 @@ class SublimErlTestRunner():
 		self.erl_path = self.get_erl_path()
 
 
-	def start_single_test(self, module_filename, module_tests_name, function_name):
-		# start single test
-		self.log("Running test \"%s:%s\" for target module \"%s\".\n" % (module_tests_name, function_name, module_filename))
-		
-		# compile all source code and test module
-		if self.compile_all_eunit() != 0: return		
-
-		# run single test
-		if self.run_single_test(module_tests_name, function_name) != 0: return
+	def start_test(self, module_filename, module_tests_name, function_name):
+		if function_name != None:
+			# specific function provided, start single test
+			self.log("Running test \"%s:%s\" for target module \"%s\".\n" % (module_tests_name, function_name, module_filename))
+			# compile all source code and test module
+			if self.compile_eunit_no_run() != 0: return		
+			# run single test
+			self.run_single_test(module_tests_name, function_name)
+		else:
+			# run all test functions in file
+			self.log("Running all tests in module \"%s.erl\" for target module \"%s\".\n" % (module_tests_name, module_filename))
+			# compile all source code and test module
+			self.compile_eunit_run_suite(module_tests_name)
 
 
 	def set_env(self):
@@ -267,9 +268,9 @@ class SublimErlTestRunner():
 			return data
 
 
-	def compile_all_eunit(self):
+	def compile_eunit_no_run(self):
 		# call rebar to compile -  HACK: passing in a non-existing suite forces rebar to not run the test suite
-		retcode, data, sterr = self.execute_os_command('%s eunit suite=sublimerl_unexisting_test' % (self.rebar_path))
+		retcode, data, sterr = self.execute_os_command('%s eunit suite=sublimerl_unexisting_test' % self.rebar_path)
 		if re.search(r"sublimerl_unexisting_test", data) != None:
 			# expected error returned (due to the hack)
 			return 0
@@ -279,20 +280,26 @@ class SublimErlTestRunner():
 		self.log_error("Could not compile source or test modules.")
 
 		return retcode
-		
+
+	
+	def compile_eunit_run_suite(self, suite):
+		retcode, data, sterr = self.execute_os_command('%s eunit suite=%s' % (self.rebar_path, suite))
+		# interpret
+		self.interpret_test_results(retcode, data, sterr)
+
 
 	def run_single_test(self, module_tests_name, function_name):
 		# build & run erl command
 		mod_function = "%s:%s" % (module_tests_name, function_name)
 		erl_command = "-noshell -pa .eunit -eval \"eunit:test({generator, fun %s})\" -s init stop" % mod_function
 		retcode, data, sterr = self.execute_os_command('%s %s' % (self.erl_path, erl_command))
+		# interpret
+		self.interpret_test_results(retcode, data, sterr)
 
+
+	def interpret_test_results(self, retcode, data, sterr):
 		# get outputs
-		if retcode != 0:
-			self.log("%s %s" % (data, sterr))
-			self.log_error("Undefined error while running tests.")
-
-		elif re.search(r"Test passed.", data):
+		if re.search(r"Test passed.", data):
 			# single test passed
 			self.log("\n=> TEST PASSED.\n")
 
@@ -303,7 +310,7 @@ class SublimErlTestRunner():
 
 		else:
 			# some tests failed
-			self.log(data)
+			self.log('\n' + data)
 			failed_count = re.search(r"Failed: (\d+).", data).group(1)
 			self.log("\n=> %s TEST(S) FAILED.\n" % failed_count)
 
