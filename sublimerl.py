@@ -30,30 +30,27 @@ import sublime, sublime_plugin
 import sys, os, re, subprocess
 
 SUBLIMERL_VERSION = '0.1'
-SUBLIMERL_CORE = None
+SUBLIMERL_CURRENT_TEST = None
 
 # start new test
 class SublimErlCommand(sublime_plugin.TextCommand):
 	def run(self, edit):
-		global SUBLIMERL_CORE
-		if SUBLIMERL_CORE == None: SUBLIMERL_CORE = SublimErlCore(self.view)
-		SUBLIMERL_CORE.start_test()
+		SublimErlCore(self.view).start_test()
 
 # redo previous test
 class SublimErlRedoCommand(sublime_plugin.TextCommand):
 	def run(self, edit):
-		global SUBLIMERL_CORE
-		if SUBLIMERL_CORE == None: return
-		SUBLIMERL_CORE.start_test(new=False)
+		global SUBLIMERL_CURRENT_TEST
+		if SUBLIMERL_CURRENT_TEST == None: return
+		SublimErlCore(self.view).start_test(new=False)
 
 
-
+# test prepare core
 class SublimErlCore():
 
 	def __init__(self, view):
 		self.view = view
-		self.cmd = SublimErlOsCommands(self)
-		self.sublimerl_current_test = None
+		self.test_runner = SublimErlTestRunner(self)
 		self.init_panel()
 
 
@@ -63,7 +60,8 @@ class SublimErlCore():
 
 	def start_test(self, new=True):
 		# do not continue if no previous test exists and a redo was asked
-		if self.sublimerl_current_test == None and new == False: return
+		global SUBLIMERL_CURRENT_TEST
+		if SUBLIMERL_CURRENT_TEST == None and new == False: return
 
 		# init test
 		self.init_panel()
@@ -108,13 +106,14 @@ class SublimErlCore():
 				self.log_error("Cannot get test function name: cursor is not scoped to a test function.")
 				return
 
-			# create test object & run tests
-			sublimerl_test = SublimErlTest(module_filename, module_tests_filename, function_name, project_root_dir, project_src_dir, project_test_dir, self)
 			# save test
-			self.sublimerl_current_test = sublimerl_test
+			SUBLIMERL_CURRENT_TEST = (module_filename, module_tests_filename, function_name)
 		
+		else:
+			module_filename, module_tests_filename, function_name = SUBLIMERL_CURRENT_TEST
+
 		# run test
-		self.sublimerl_current_test.run_single_test()
+		self.test_runner.start_single_test(module_filename, module_tests_filename, function_name)
 
 
 	def get_otp_project_root(self, module_tests_filename):
@@ -127,8 +126,12 @@ class SublimErlCore():
 		project_test_dir = os.path.dirname(filename)
 		project_root_path_arr = project_test_dir.split(os.sep)
 		project_root_path_arr.pop()
+		project_root_dir = os.sep.join(project_root_path_arr)
 
-		return (project_test_dir, os.sep.join(project_root_path_arr))
+		# set current directory to root - needed by rebar
+		os.chdir(os.path.abspath(project_root_dir))
+
+		return (project_test_dir, project_root_dir)
 
 
 	def get_target_module_name(self):
@@ -164,10 +167,10 @@ class SublimErlCore():
 
 
 	def rebar_exists(self):
-		return self.cmd.rebar_exists()
+		return self.test_runner.rebar_exists()
 
 	def erl_exists(self):
-		return self.cmd.erl_exists()
+		return self.test_runner.erl_exists()
 
 	def log(self, text):
 		self.panel.write_to_panel(text)
@@ -176,6 +179,7 @@ class SublimErlCore():
 		self.log("Error => %s\n[ABORTED]\n" % text)
 
 
+# panel
 class SublimErlPanel():
 
 	def __init__(self, view):
@@ -200,48 +204,28 @@ class SublimErlPanel():
 		self.window.run_command("show_panel", {"panel": "output." + self.panel_name})
 
 
+# test runner
+class SublimErlTestRunner():
 
-class SublimErlTest():
-
-	def __init__(self, module_filename, module_tests_filename, function_name, project_root_dir, project_src_dir, project_test_dir, parent):
-		# set current directory to root - needed by rebar
-		os.chdir(os.path.abspath(project_root_dir))
-
-		# save
-		self.module_filename = module_filename
-		self.module_tests_filename = module_tests_filename
-		self.function_name = function_name
-		self.project_root_dir = project_root_dir
-		self.project_src_dir = project_src_dir
-		self.project_test_dir = project_test_dir
-
+	def __init__(self, parent):
 		# imported from parent
 		self.log = parent.log
 		self.log_error = parent.log_error
-		self.cmd = parent.cmd
 
-
-	def run_single_test(self):
-		# start single test
-		self.log("Running test \"%s\" for target module \"%s\".\n" % (self.function_name, self.module_filename))
-		
-		# compile all source code and test module
-		if self.cmd.compile_all(self.module_tests_filename, self.function_name) != 0: return		
-
-		# run single test
-		if self.cmd.run_single_test(self.module_tests_filename, self.function_name) != 0: return
-
-
-
-class SublimErlOsCommands():
-
-	def __init__(self, parent):
-		# logs
-		self.log = parent.log
-		self.log_error = parent.log_error
 		# get paths
 		self.rebar_path = self.get_rebar_path()
 		self.erl_path = self.get_erl_path()
+
+
+	def start_single_test(self, module_filename, module_tests_filename, function_name):
+		# start single test
+		self.log("Running test \"%s\" for target module \"%s\".\n" % (function_name, module_filename))
+		
+		# compile all source code and test module
+		if self.compile_all_eunit() != 0: return		
+
+		# run single test
+		if self.run_single_test(module_tests_filename, function_name) != 0: return
 
 
 	def set_env(self):
@@ -280,42 +264,47 @@ class SublimErlOsCommands():
 			return data
 
 
-	def compile_all(self, module_tests_name, function_name):
+	def compile_all_eunit(self):
 		# call rebar to compile -  HACK: passing in a non-existing suite forces rebar to not run the test suite
+		self.log('%s eunit suite=sublimerl_unexisting_test' % (self.rebar_path))
 		retcode, data, sterr = self.execute_os_command('%s eunit suite=sublimerl_unexisting_test' % (self.rebar_path))
 		if re.search(r"sublimerl_unexisting_test", data) != None:
 			# expected error returned (due to the hack)
 			return 0
 
 		# display some other error returned (compilation errors?)
-		self.log("%s" % data)
+		self.log("%s %s" % (data, sterr))
 		self.log_error("Could not compile source or test modules.")
 
 		return retcode
 		
 
 	def run_single_test(self, module_tests_filename, function_name):
+		# build & run erl command
 		tests_module = os.path.splitext(module_tests_filename)[0]
 		mod_function = "%s:%s" % (tests_module, function_name)
 		erl_command = "-noshell -pa .eunit -eval \"eunit:test({generator, fun %s})\" -s init stop" % mod_function
 		retcode, data, sterr = self.execute_os_command('%s %s' % (self.erl_path, erl_command))
+
+		# get outputs
 		if retcode != 0:
 			self.log("%s %s" % (data, sterr))
 			self.log_error("Undefined error while running tests.")
 
 		elif re.search(r"Test passed.", data):
+			# single test passed
 			self.log("\n=> TEST PASSED.\n")
 
 		elif re.search(r"All 2 tests passed.", data):
+			# multiple tests passed
 			passed_count = re.search(r"All (\d+) tests passed.", data).group(1)
 			self.log("\n=> %s TESTS PASSED.\n" % passed_count)
 
 		else:
-			# get count of test failed
+			# some tests failed
 			self.log(data)
 			failed_count = re.search(r"Failed: (\d+).", data).group(1)
 			self.log("\n=> %s TEST(S) FAILED.\n" % failed_count)
-		
 
 
 
