@@ -30,23 +30,30 @@ import sublime, sublime_plugin
 import sys, os, re, subprocess
 
 SUBLIMERL_VERSION = '0.1'
-SUBLIMERL_CURRENT_TEST = None
 
-# start new test
-class SublimErlCommand(sublime_plugin.TextCommand):
+SUBLIMERL_CURRENT_EUNIT_TEST = None
+SUBLIMERL_CURRENT_CT_TEST = None
+
+
+# start new eunit test
+class SublimErlEunitCommand(sublime_plugin.TextCommand):
 	def run(self, edit):
-		SublimErlCore(self.view).start_test()
+		SublimErlCore(self.view).start_eunit_test()
 
-# redo previous test
-class SublimErlRedoCommand(sublime_plugin.TextCommand):
+# redo previous eunit test
+class SublimErlEunitRedoCommand(sublime_plugin.TextCommand):
 	def run(self, edit):
-		global SUBLIMERL_CURRENT_TEST
-		if SUBLIMERL_CURRENT_TEST == None: return
-		SublimErlCore(self.view).start_test(new=False)
+		global SUBLIMERL_CURRENT_EUNIT_TEST
+		if SUBLIMERL_CURRENT_EUNIT_TEST == None: return
+		SublimErlCore(self.view).start_eunit_test(new=False)
 
+# start new ct test
+class SublimErlCtCommand(sublime_plugin.TextCommand):
+	def run(self, edit):
+		SublimErlCore(self.view).start_ct_test()
 
+# listener on save
 class SublimErlListener(sublime_plugin.EventListener):
-
 	def on_post_save(self, view):
 		# a view has been saved
 		core = SublimErlCore(view, panel=False)
@@ -74,26 +81,41 @@ class SublimErlCore():
 		os.chdir(os.path.abspath(project_root_dir))
 
 
-	def start_test(self, new=True):
+	def common_checks(self):
+		# file is saved?
+		if self.view.is_scratch():
+			self.log_error("This file has not been saved on disk: cannot start tests.")
+			return False
+		self.set_cwd_to_otp_project_root()
+
+		# rebar check
+		if self.rebar_exists() == False:
+			self.log_error("Rebar cannot be found, please download and install from <https://github.com/basho/rebar>.")
+			return False
+
+		# erl check
+		if self.erl_exists() == False:
+			self.log_error("Erlang binary (erl) cannot be found.")
+			return False
+		return True
+
+	def start_eunit_test(self, new=True):
 		# do not continue if no previous test exists and a redo was asked
-		global SUBLIMERL_CURRENT_TEST
-		if SUBLIMERL_CURRENT_TEST == None and new == False: return
+		global SUBLIMERL_CURRENT_EUNIT_TEST
+		if SUBLIMERL_CURRENT_EUNIT_TEST == None and new == False: return
 
 		# init test
 		self.log("Starting tests (SublimErl v%s).\n" % SUBLIMERL_VERSION)
 
-		if new == True:
-			# file is saved?
-			if self.view.is_scratch():
-				self.log_error("This file has not been saved on disk: cannot start tests.")
-				return
-			self.set_cwd_to_otp_project_root()
+		# common checks
+		if self.common_checks() == False: return
 
+		if new == True:
 			# reset test
-			SUBLIMERL_CURRENT_TEST = None
+			SUBLIMERL_CURRENT_EUNIT_TEST = None
 
 			# get module and module_tests filename
-			module_tests_name = self.get_test_module_name()
+			module_tests_name = self.get_module_name()
 			if module_tests_name == None:
 				self.log_error("Module declaration could not be found: add a -module/1 directive.")
 				return
@@ -107,30 +129,58 @@ class SublimErlCore():
 				module_name = module_tests_name[0:pos]
 			module_filename = "%s.erl" % module_name
 
-			# rebar check
-			if self.rebar_exists() == False:
-				self.log_error("Rebar cannot be found, please download and install from <https://github.com/basho/rebar>.")
-				return
-
-			# erl check
-			if self.erl_exists() == False:
-				self.log_error("Erlang binary (erl) cannot be found.")
-				return
-
 			# get function name depending on cursor position
 			function_name = self.get_test_function_name()
 
 			# save test
-			SUBLIMERL_CURRENT_TEST = (module_filename, module_tests_name, function_name)
+			SUBLIMERL_CURRENT_EUNIT_TEST = (module_filename, module_tests_name, function_name)
 		
 		else:
-			module_filename, module_tests_name, function_name = SUBLIMERL_CURRENT_TEST
+			module_filename, module_tests_name, function_name = SUBLIMERL_CURRENT_EUNIT_TEST
 
 		# run test
-		self.test_runner.start_test(module_filename, module_tests_name, function_name)
+		self.test_runner.start_eunit_test(module_filename, module_tests_name, function_name)
 
 
-	def get_test_module_name(self):
+	def start_ct_test(self, new=True):
+		# do not continue if no previous test exists and a redo was asked
+		global SUBLIMERL_CURRENT_CT_TEST
+		if SUBLIMERL_CURRENT_CT_TEST == None and new == False: return
+
+		# init test
+		self.log("Starting tests (SublimErl v%s).\n" % SUBLIMERL_VERSION)
+
+		# common checks
+		if self.common_checks() == False: return
+
+		if new == True:
+			# reset test
+			SUBLIMERL_CURRENT_CT_TEST = None
+
+			# get module and module_tests filename
+			module_tests_name = self.get_module_name()
+			if module_tests_name == None:
+				self.log_error("Module declaration could not be found: add a -module/1 directive.")
+				return
+
+			pos = module_tests_name.find("_SUITE")
+			if pos == -1:
+				# not a CT file
+				self.log_error("This module doesn't appear to be a common test SUITE file.")
+				return
+			module_tests_name = module_tests_name[0:pos]
+
+			# save test
+			SUBLIMERL_CURRENT_CT_TEST = module_tests_name
+		
+		else:
+			module_tests_name = SUBLIMERL_CURRENT_CT_TEST
+
+		# run test
+		self.test_runner.start_ct_test(module_tests_name)
+
+
+	def get_module_name(self):
 		# find module declaration and get module name
 		module_region = self.view.find(r"^\s*-module\((?:[a-zA-Z0-9_]+)\)\.", 0)
 		if module_region != None:
@@ -251,7 +301,7 @@ class SublimErlTestRunner():
 			return data
 
 
-	def start_test(self, module_filename, module_tests_name, function_name):
+	def start_eunit_test(self, module_filename, module_tests_name, function_name):
 		if function_name != None:
 			# specific function provided, start single test
 			self.log("Running test \"%s:%s\" for target module \"%s\".\n" % (module_tests_name, function_name, module_filename))
@@ -266,6 +316,14 @@ class SublimErlTestRunner():
 			self.compile_eunit_run_suite(module_tests_name)
 
 
+	def start_ct_test(self, module_tests_name):
+		# run CT for suite
+		self.log("Running tests of Common Tests SUITE \"%s.erl\".\n" % module_tests_name)
+		# compile all source code and test module
+		self.compile_all()
+		self.run_ct_suite(module_tests_name)
+
+
 	def compile_all(self):
 		# compile to ebin
 		retcode, data, sterr = self.execute_os_command('%s compile' % self.rebar_path)
@@ -278,13 +336,13 @@ class SublimErlTestRunner():
 			# expected error returned (due to the hack)
 			return 0
 		# interpret
-		self.interpret_test_results(retcode, data, sterr)
+		self.interpret_eunit_test_results(retcode, data, sterr)
 
 	
 	def compile_eunit_run_suite(self, suite):
 		retcode, data, sterr = self.execute_os_command('%s eunit suite=%s' % (self.rebar_path, suite))
 		# interpret
-		self.interpret_test_results(retcode, data, sterr)
+		self.interpret_eunit_test_results(retcode, data, sterr)
 
 
 	def run_single_test(self, module_tests_name, function_name):
@@ -293,10 +351,10 @@ class SublimErlTestRunner():
 		erl_command = "-noshell -pa .eunit -eval \"eunit:test({generator, fun %s})\" -s init stop" % mod_function
 		retcode, data, sterr = self.execute_os_command('%s %s' % (self.erl_path, erl_command))
 		# interpret
-		self.interpret_test_results(retcode, data, sterr)
+		self.interpret_eunit_test_results(retcode, data, sterr)
 
 
-	def interpret_test_results(self, retcode, data, sterr):
+	def interpret_eunit_test_results(self, retcode, data, sterr):
 		# get outputs
 		if re.search(r"Test passed.", data):
 			# single test passed
@@ -316,4 +374,41 @@ class SublimErlTestRunner():
 		else:
 			self.log('\n' + data)
 			self.log("\n=> TEST(S) FAILED.\n")
+
+
+	def run_ct_suite(self, module_tests_name):
+		retcode, data, sterr = self.execute_os_command('%s ct suites=%s' % (self.rebar_path, module_tests_name))
+		# interpret
+		self.interpret_ct_test_results(retcode, data, sterr)
+
+
+	def interpret_ct_test_results(self, retcode, data, sterr):
+		# get outputs
+		if re.search(r"DONE.", data):
+			# test passed
+			passed_count = re.search(r"(\d+) ok, 0 failed of \d+ test cases", data).group(1)
+			self.log("\n=> %s TEST(S) PASSED.\n" % passed_count)
+		elif re.search(r"ERROR: One or more tests failed", data):
+			self.log('\n' + data)
+			failed_count = re.search(r"\d+ ok, (\d+) failed of \d+ test cases", data).group(1)
+			self.log("\n=> %s TEST(S) FAILED.\n" % failed_count)
+		else:
+			self.log('\n' + data)
+			self.log("\n=> TEST(S) FAILED.\n")
+
+
+
+# ==> TDD (ct)
+# DONE.
+# Testing code.TDD.mymodule_SUITE: TEST COMPLETE, 1 ok, 0 failed of 1 test cases
+
+
+# Testing code.TDD.mymodule_SUITE: TEST COMPLETE, 0 ok, 1 failed of 1 test cases
+
+# Updating /Users/roberto/code/TDD/logs/index.html... done
+# Updating /Users/roberto/code/TDD/logs/all_runs.html... done
+
+# ERROR: One or more tests failed
+
+
 

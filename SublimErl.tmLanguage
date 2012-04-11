@@ -8,9 +8,17 @@
   <array>
     <dict>
       <key>comment</key>
-      <string>test pass</string>
+      <string>test fail</string>
       <key>match</key>
       <string>mymodule_tests:\d+: [a-zA-Z0-9_]+...\*failed\*</string>
+      <key>name</key>
+      <string>test.fail</string>
+    </dict>
+    <dict>
+      <key>comment</key>
+      <string>test fail</string>
+      <key>match</key>
+      <string>[a-zA-Z0-9_]+_SUITE:[a-zA-Z0-9_]+ failed on line \d+</string>
       <key>name</key>
       <string>test.fail</string>
     </dict>
@@ -26,7 +34,7 @@
       <key>comment</key>
       <string>test pass</string>
       <key>match</key>
-      <string>(\d+ )?TEST(S)? PASSED</string>
+      <string>(\d+ )?TEST(\(S\))? PASSED</string>
       <key>name</key>
       <string>test.pass</string>
     </dict>
