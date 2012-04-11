@@ -1,5 +1,4 @@
 [
-	{ "keys": ["super+shift+f8"], "command": "sublim_erl_eunit" },
-	{ "keys": ["super+f8"], "command": "sublim_erl_eunit_redo" },
-	{ "keys": ["super+shift+f9"], "command": "sublim_erl_ct" }
+	{ "keys": ["super+shift+f8"], "command": "sublim_erl" },
+	{ "keys": ["super+f8"], "command": "sublim_erl_redo" }
 ]

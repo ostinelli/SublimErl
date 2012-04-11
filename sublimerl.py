@@ -31,26 +31,21 @@ import sys, os, re, subprocess
 
 SUBLIMERL_VERSION = '0.1'
 
-SUBLIMERL_CURRENT_EUNIT_TEST = None
-SUBLIMERL_CURRENT_CT_TEST = None
+SUBLIMERL_CURRENT_TEST = None
+SUBLIMERL_CURRENT_TEST_TYPE = None
 
 
 # start new eunit test
-class SublimErlEunitCommand(sublime_plugin.TextCommand):
+class SublimErlCommand(sublime_plugin.TextCommand):
 	def run(self, edit):
-		SublimErlCore(self.view).start_eunit_test()
+		SublimErlCore(self.view).start_test()
 
 # redo previous eunit test
-class SublimErlEunitRedoCommand(sublime_plugin.TextCommand):
+class SublimErlRedoCommand(sublime_plugin.TextCommand):
 	def run(self, edit):
-		global SUBLIMERL_CURRENT_EUNIT_TEST
-		if SUBLIMERL_CURRENT_EUNIT_TEST == None: return
-		SublimErlCore(self.view).start_eunit_test(new=False)
-
-# start new ct test
-class SublimErlCtCommand(sublime_plugin.TextCommand):
-	def run(self, edit):
-		SublimErlCore(self.view).start_ct_test()
+		global SUBLIMERL_CURRENT_TEST
+		if SUBLIMERL_CURRENT_TEST == None: return
+		SublimErlCore(self.view).start_test(new=False)
 
 # listener on save
 class SublimErlListener(sublime_plugin.EventListener):
@@ -85,41 +80,69 @@ class SublimErlCore():
 		# file is saved?
 		if self.view.is_scratch():
 			self.log_error("This file has not been saved on disk: cannot start tests.")
-			return False
+			return
+
+		# set cwd to project's root path - so that rebar can access it
 		self.set_cwd_to_otp_project_root()
 
 		# rebar check
 		if self.rebar_exists() == False:
 			self.log_error("Rebar cannot be found, please download and install from <https://github.com/basho/rebar>.")
-			return False
+			return
 
 		# erl check
 		if self.erl_exists() == False:
 			self.log_error("Erlang binary (erl) cannot be found.")
-			return False
-		return True
+			return
+		
+		# get module and module_tests filename
+		module_tests_name = self.get_module_name()
+		if module_tests_name == None:
+			self.log_error("Module declaration could not be found: add a -module/1 directive.")
+			return
+		return module_tests_name
 
-	def start_eunit_test(self, new=True):
+
+	def start_test(self, new=True):
+		# is this a .erl file?
+		if not self.view.is_scratch():
+			if os.path.splitext(self.view.file_name())[1] != '.erl':
+				return
+
 		# do not continue if no previous test exists and a redo was asked
-		global SUBLIMERL_CURRENT_EUNIT_TEST
-		if SUBLIMERL_CURRENT_EUNIT_TEST == None and new == False: return
+		global SUBLIMERL_CURRENT_TEST, SUBLIMERL_CURRENT_TEST_TYPE
+		if SUBLIMERL_CURRENT_TEST == None and new == False: return
 
 		# init test
 		self.log("Starting tests (SublimErl v%s).\n" % SUBLIMERL_VERSION)
 
 		# common checks
-		if self.common_checks() == False: return
+		module_tests_name = self.common_checks()
+		if module_tests_name == None: return
 
 		if new == True:
 			# reset test
-			SUBLIMERL_CURRENT_EUNIT_TEST = None
+			SUBLIMERL_CURRENT_TEST = None
+			# get type
+			SUBLIMERL_CURRENT_TEST_TYPE = self.get_test_type(module_tests_name)
+		
+		if SUBLIMERL_CURRENT_TEST_TYPE == 'eunit':
+			self.start_eunit_test(module_tests_name, new)
+		elif SUBLIMERL_CURRENT_TEST_TYPE == 'ct':
+			self.start_ct_test(module_tests_name, new)
+		else:
+			self.log_error("Could not find tests to run.")
 
-			# get module and module_tests filename
-			module_tests_name = self.get_module_name()
-			if module_tests_name == None:
-				self.log_error("Module declaration could not be found: add a -module/1 directive.")
-				return
 
+	def get_test_type(self, module_tests_name):
+		if module_tests_name.find("_SUITE") != -1:
+			return 'ct'
+		return 'eunit'
+
+
+	def start_eunit_test(self, module_tests_name, new=True):
+		if new == True:
+			# get test
 			pos = module_tests_name.find("_tests")
 			if pos == -1:
 				# tests are in the same file
@@ -133,41 +156,18 @@ class SublimErlCore():
 			function_name = self.get_test_function_name()
 
 			# save test
-			SUBLIMERL_CURRENT_EUNIT_TEST = (module_filename, module_tests_name, function_name)
+			SUBLIMERL_CURRENT_TEST = (module_filename, module_tests_name, function_name)
 		
 		else:
-			module_filename, module_tests_name, function_name = SUBLIMERL_CURRENT_EUNIT_TEST
+			module_filename, module_tests_name, function_name = SUBLIMERL_CURRENT_TEST
 
 		# run test
-		self.test_runner.start_eunit_test(module_filename, module_tests_name, function_name)
+		self.test_runner.eunit_test(module_filename, module_tests_name, function_name)
 
 
-	def start_ct_test(self, new=True):
-		# do not continue if no previous test exists and a redo was asked
-		global SUBLIMERL_CURRENT_CT_TEST
-		if SUBLIMERL_CURRENT_CT_TEST == None and new == False: return
-
-		# init test
-		self.log("Starting tests (SublimErl v%s).\n" % SUBLIMERL_VERSION)
-
-		# common checks
-		if self.common_checks() == False: return
-
+	def start_ct_test(self, module_tests_name, new=True):
 		if new == True:
-			# reset test
-			SUBLIMERL_CURRENT_CT_TEST = None
-
-			# get module and module_tests filename
-			module_tests_name = self.get_module_name()
-			if module_tests_name == None:
-				self.log_error("Module declaration could not be found: add a -module/1 directive.")
-				return
-
 			pos = module_tests_name.find("_SUITE")
-			if pos == -1:
-				# not a CT file
-				self.log_error("This module doesn't appear to be a common test SUITE file.")
-				return
 			module_tests_name = module_tests_name[0:pos]
 
 			# save test
@@ -177,7 +177,7 @@ class SublimErlCore():
 			module_tests_name = SUBLIMERL_CURRENT_CT_TEST
 
 		# run test
-		self.test_runner.start_ct_test(module_tests_name)
+		self.test_runner.ct_test(module_tests_name)
 
 
 	def get_module_name(self):
@@ -301,7 +301,7 @@ class SublimErlTestRunner():
 			return data
 
 
-	def start_eunit_test(self, module_filename, module_tests_name, function_name):
+	def eunit_test(self, module_filename, module_tests_name, function_name):
 		if function_name != None:
 			# specific function provided, start single test
 			self.log("Running test \"%s:%s\" for target module \"%s\".\n" % (module_tests_name, function_name, module_filename))
@@ -316,7 +316,7 @@ class SublimErlTestRunner():
 			self.compile_eunit_run_suite(module_tests_name)
 
 
-	def start_ct_test(self, module_tests_name):
+	def ct_test(self, module_tests_name):
 		# run CT for suite
 		self.log("Running tests of Common Tests SUITE \"%s.erl\".\n" % module_tests_name)
 		# compile all source code and test module
@@ -395,20 +395,3 @@ class SublimErlTestRunner():
 		else:
 			self.log('\n' + data)
 			self.log("\n=> TEST(S) FAILED.\n")
-
-
-
-# ==> TDD (ct)
-# DONE.
-# Testing code.TDD.mymodule_SUITE: TEST COMPLETE, 1 ok, 0 failed of 1 test cases
-
-
-# Testing code.TDD.mymodule_SUITE: TEST COMPLETE, 0 ok, 1 failed of 1 test cases
-
-# Updating /Users/roberto/code/TDD/logs/index.html... done
-# Updating /Users/roberto/code/TDD/logs/all_runs.html... done
-
-# ERROR: One or more tests failed
-
-
-

@@ -34,7 +34,7 @@
       <key>comment</key>
       <string>test pass</string>
       <key>match</key>
-      <string>(\d+ )?TEST(\(S\))? PASSED</string>
+      <string>(\d+ )?TEST(\(S\)|S)? PASSED</string>
       <key>name</key>
       <string>test.pass</string>
     </dict>
