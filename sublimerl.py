@@ -27,7 +27,7 @@
 # ==========================================================================================================
 
 import sublime, sublime_plugin
-import sys, os, re, subprocess
+import sys, os, re, subprocess, threading
 
 SUBLIMERL_VERSION = '0.1'
 
@@ -53,7 +53,11 @@ class SublimErlListener(sublime_plugin.EventListener):
 		# a view has been saved
 		core = SublimErlCore(view, panel=False)
 		core.set_cwd_to_otp_project_root()
-		core.test_runner.compile_all()
+		# run compile on separate thread to avoid blocking the editor
+		class SublimErlSaveThread(threading.Thread):
+			def run(self):
+				core.test_runner.compile_all()
+		SublimErlSaveThread().start()
 
 
 # test prepare core
