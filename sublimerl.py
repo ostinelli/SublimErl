@@ -80,7 +80,23 @@ class SublimErlCore():
 		os.chdir(os.path.abspath(project_root_dir))
 
 
-	def common_checks(self):
+	def start_test(self, new=True):
+		# is this a .erl file?
+		if not self.view.is_scratch():
+			if os.path.splitext(self.view.file_name())[1] != '.erl':
+				return
+
+		# do not continue if no previous test exists and a redo was asked
+		global SUBLIMERL_CURRENT_TEST, SUBLIMERL_CURRENT_TEST_TYPE
+		if SUBLIMERL_CURRENT_TEST == None and new == False: return
+
+		# get module and module_tests filename
+		module_tests_name = self.get_module_name()
+		if module_tests_name == None: return
+
+		# init test
+		self.log("Starting tests (SublimErl v%s).\n" % SUBLIMERL_VERSION)
+
 		# file is saved?
 		if self.view.is_scratch():
 			self.log_error("This file has not been saved on disk: cannot start tests.")
@@ -98,31 +114,6 @@ class SublimErlCore():
 		if self.erl_exists() == False:
 			self.log_error("Erlang binary (erl) cannot be found.")
 			return
-		
-		# get module and module_tests filename
-		module_tests_name = self.get_module_name()
-		if module_tests_name == None:
-			self.log_error("Module declaration could not be found: add a -module/1 directive.")
-			return
-		return module_tests_name
-
-
-	def start_test(self, new=True):
-		# is this a .erl file?
-		if not self.view.is_scratch():
-			if os.path.splitext(self.view.file_name())[1] != '.erl':
-				return
-
-		# do not continue if no previous test exists and a redo was asked
-		global SUBLIMERL_CURRENT_TEST, SUBLIMERL_CURRENT_TEST_TYPE
-		if SUBLIMERL_CURRENT_TEST == None and new == False: return
-
-		# init test
-		self.log("Starting tests (SublimErl v%s).\n" % SUBLIMERL_VERSION)
-
-		# common checks
-		module_tests_name = self.common_checks()
-		if module_tests_name == None: return
 
 		if new == True:
 			# reset test
@@ -173,7 +164,7 @@ class SublimErlCore():
 
 	def start_ct_test(self, module_tests_name, new=True):
 		global SUBLIMERL_CURRENT_TEST
-		
+
 		if new == True:
 			pos = module_tests_name.find("_SUITE")
 			module_tests_name = module_tests_name[0:pos]
