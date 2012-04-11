@@ -1,4 +1,5 @@
 [
 	{ "keys": ["ctrl+shift+f8"], "command": "sublim_erl" },
-	{ "keys": ["ctrl+f8"], "command": "sublim_erl_redo" }
+	{ "keys": ["ctrl+f8"], "command": "sublim_erl_redo" },
+	{ "keys": ["ctrl+shift+c"], "command": "sublim_erl_show_ct" }
 ]

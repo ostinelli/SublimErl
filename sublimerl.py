@@ -27,7 +27,7 @@
 # ==========================================================================================================
 
 import sublime, sublime_plugin
-import sys, os, re, subprocess, threading
+import sys, os, re, subprocess, threading, webbrowser
 
 SUBLIMERL_VERSION = '0.1'
 
@@ -35,17 +35,25 @@ SUBLIMERL_CURRENT_TEST = None
 SUBLIMERL_CURRENT_TEST_TYPE = None
 
 
-# start new eunit test
+# start new test
 class SublimErlCommand(sublime_plugin.TextCommand):
 	def run(self, edit):
 		SublimErlCore(self.view).start_test()
 
-# redo previous eunit test
+# redo previous test
 class SublimErlRedoCommand(sublime_plugin.TextCommand):
 	def run(self, edit):
 		global SUBLIMERL_CURRENT_TEST
 		if SUBLIMERL_CURRENT_TEST == None: return
 		SublimErlCore(self.view).start_test(new=False)
+
+# open CT results
+class SublimErlShowCtCommand(sublime_plugin.TextCommand):
+	def run(self, edit):
+		core = SublimErlCore(self.view, panel=False)
+		core.set_cwd_to_otp_project_root()
+		index_path = os.path.abspath(os.path.join('logs', 'index.html'))
+		if os.path.exists(index_path): webbrowser.open(index_path)
 
 # listener on save
 class SublimErlListener(sublime_plugin.EventListener):
@@ -255,10 +263,8 @@ class SublimErlTestRunner():
 
 	def __init__(self, parent):
 		# imported from parent
-
 		self.log = parent.log
 		self.log_error = parent.log_error
-
 		# get paths
 		self.rebar_path = self.get_rebar_path()
 		self.erl_path = self.get_erl_path()
@@ -387,10 +393,14 @@ class SublimErlTestRunner():
 			# test passed
 			passed_count = re.search(r"(\d+) ok, 0 failed of \d+ test cases", data).group(1)
 			self.log("\n=> %s TEST(S) PASSED.\n" % passed_count)
+			return
+
 		elif re.search(r"ERROR: One or more tests failed", data):
 			self.log('\n' + data)
 			failed_count = re.search(r"\d+ ok, (\d+) failed of \d+ test cases", data).group(1)
 			self.log("\n=> %s TEST(S) FAILED.\n" % failed_count)
+			self.log("** Hint: hit Command+Shift+C (by default) to show a browser with results. **\n")
+
 		else:
 			self.log('\n' + data)
 			self.log("\n=> TEST(S) FAILED.\n")
