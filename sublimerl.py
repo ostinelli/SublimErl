@@ -145,6 +145,8 @@ class SublimErlCore():
 
 
 	def start_eunit_test(self, module_tests_name, new=True):
+		global SUBLIMERL_CURRENT_TEST
+
 		if new == True:
 			# get test
 			pos = module_tests_name.find("_tests")
@@ -170,15 +172,17 @@ class SublimErlCore():
 
 
 	def start_ct_test(self, module_tests_name, new=True):
+		global SUBLIMERL_CURRENT_TEST
+		
 		if new == True:
 			pos = module_tests_name.find("_SUITE")
 			module_tests_name = module_tests_name[0:pos]
 
 			# save test
-			SUBLIMERL_CURRENT_CT_TEST = module_tests_name
+			SUBLIMERL_CURRENT_TEST = module_tests_name
 		
 		else:
-			module_tests_name = SUBLIMERL_CURRENT_CT_TEST
+			module_tests_name = SUBLIMERL_CURRENT_TEST
 
 		# run test
 		self.test_runner.ct_test(module_tests_name)
