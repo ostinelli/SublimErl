@@ -293,14 +293,14 @@ class SublimErlTestRunner():
 
 
 	def get_rebar_path(self):
-		retcode, data, sterr = self.execute_os_command('which rebar')
+		retcode, data = self.execute_os_command('which rebar')
 		data = data.strip()
 		if retcode == 0 and len(data) > 0:
 			return data
 
 
 	def get_erl_path(self):
-		retcode, data, sterr = self.execute_os_command('which erl')
+		retcode, data = self.execute_os_command('which erl')
 		data = data.strip()
 		if retcode == 0 and len(data) > 0:
 			return data
@@ -331,35 +331,35 @@ class SublimErlTestRunner():
 
 	def compile_all(self):
 		# compile to ebin
-		retcode, data, sterr = self.execute_os_command('%s compile' % self.rebar_path)
+		retcode, data = self.execute_os_command('%s compile' % self.rebar_path)
 
 
 	def compile_eunit_no_run(self):
 		# call rebar to compile -  HACK: passing in a non-existing suite forces rebar to not run the test suite
-		retcode, data, sterr = self.execute_os_command('%s eunit suite=sublimerl_unexisting_test' % self.rebar_path)
+		retcode, data = self.execute_os_command('%s eunit suite=sublimerl_unexisting_test' % self.rebar_path)
 		if re.search(r"sublimerl_unexisting_test", data) != None:
 			# expected error returned (due to the hack)
 			return 0
 		# interpret
-		self.interpret_eunit_test_results(retcode, data, sterr)
+		self.interpret_eunit_test_results(retcode, data)
 
 	
 	def compile_eunit_run_suite(self, suite):
-		retcode, data, sterr = self.execute_os_command('%s eunit suite=%s' % (self.rebar_path, suite))
+		retcode, data = self.execute_os_command('%s eunit suite=%s' % (self.rebar_path, suite))
 		# interpret
-		self.interpret_eunit_test_results(retcode, data, sterr)
+		self.interpret_eunit_test_results(retcode, data)
 
 
 	def run_single_test(self, module_tests_name, function_name):
 		# build & run erl command
 		mod_function = "%s:%s" % (module_tests_name, function_name)
 		erl_command = "-noshell -pa .eunit -eval \"eunit:test({generator, fun %s})\" -s init stop" % mod_function
-		retcode, data, sterr = self.execute_os_command('%s %s' % (self.erl_path, erl_command))
+		retcode, data = self.execute_os_command('%s %s' % (self.erl_path, erl_command))
 		# interpret
-		self.interpret_eunit_test_results(retcode, data, sterr)
+		self.interpret_eunit_test_results(retcode, data)
 
 
-	def interpret_eunit_test_results(self, retcode, data, sterr):
+	def interpret_eunit_test_results(self, retcode, data):
 		# get outputs
 		if re.search(r"Test passed.", data):
 			# single test passed
@@ -382,12 +382,12 @@ class SublimErlTestRunner():
 
 
 	def run_ct_suite(self, module_tests_name):
-		retcode, data, sterr = self.execute_os_command('%s ct suites=%s' % (self.rebar_path, module_tests_name))
+		retcode, data = self.execute_os_command('%s ct suites=%s' % (self.rebar_path, module_tests_name))
 		# interpret
-		self.interpret_ct_test_results(retcode, data, sterr)
+		self.interpret_ct_test_results(retcode, data)
 
 
-	def interpret_ct_test_results(self, retcode, data, sterr):
+	def interpret_ct_test_results(self, retcode, data):
 		# get outputs
 		if re.search(r"DONE.", data):
 			# test passed
