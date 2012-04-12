@@ -31,388 +31,146 @@ import sys, os, re, subprocess, threading, webbrowser
 
 SUBLIMERL_VERSION = '0.1'
 
-SUBLIMERL_CURRENT_TEST = None
-SUBLIMERL_CURRENT_TEST_TYPE = None
 
+# core launcher & panel
+class SublimErlLauncher():
 
-# start new test
-class SublimErlCommand(sublime_plugin.TextCommand):
-	def run(self, edit):
-		SublimErlCore(self.view).start_test()
-
-# redo previous test
-class SublimErlRedoCommand(sublime_plugin.TextCommand):
-	def run(self, edit):
-		global SUBLIMERL_CURRENT_TEST
-		if SUBLIMERL_CURRENT_TEST == None: return
-		SublimErlCore(self.view).start_test(new=False)
-
-# open CT results
-class SublimErlShowCtCommand(sublime_plugin.TextCommand):
-	def run(self, edit):
-		core = SublimErlCore(self.view, panel=False)
-		core.set_cwd_to_otp_project_root()
-		index_path = os.path.abspath(os.path.join('logs', 'index.html'))
-		if os.path.exists(index_path): webbrowser.open(index_path)
-
-# listener on save
-class SublimErlListener(sublime_plugin.EventListener):
-	def on_post_save(self, view):
-		# a view has been saved
-		core = SublimErlCore(view, panel=False)
-		core.set_cwd_to_otp_project_root()
-		# run compile on separate thread to avoid blocking the editor
-		class SublimErlSaveThread(threading.Thread):
-			def run(self):
-				core.test_runner.compile_all()
-		SublimErlSaveThread().start()
-
-
-# test prepare core
-class SublimErlCore():
-
-	def __init__(self, view, panel=True):
+	def __init__(self, view):
+		# init
+		self.panel_name = 'sublimerl'
+		self.panel_buffer = ''
 		self.view = view
-		self.test_runner = SublimErlTestRunner(self)
-		if panel == True: self.panel = SublimErlPanel(self.view)
+		self.window = view.window()
+		self.rebar_path = None
+		self.erl_path = None
+		self.env = None
+		# setup
+		self.panel = self.window.get_output_panel(self.panel_name)
+		self.available = False
+		self.setup()
 
-		
-	def set_cwd_to_otp_project_root(self):
-		# get project root
-		project_test_dir = os.path.dirname(self.view.file_name())
-		project_root_path_arr = project_test_dir.split(os.sep)
-		project_root_path_arr.pop()
-		project_root_dir = os.sep.join(project_root_path_arr)
+	def update_panel(self):
+		if len(self.panel_buffer):
+			panel_edit = self.panel.begin_edit()
+			self.panel.insert(panel_edit, self.panel.size(), self.panel_buffer)
+			self.panel.end_edit(panel_edit)
+			self.panel.show(self.panel.size())
+			self.panel_buffer = ''
+			self.window.run_command("show_panel", {"panel": "output.%s" % self.panel_name})
 
-		# set current directory to root - needed by rebar
-		os.chdir(os.path.abspath(project_root_dir))
+	def log(self, text):
+		self.panel_buffer += text
+		sublime.set_timeout(self.update_panel, 0)
 
+	def log_error(self, error_text):
+		self.log("Error => %s\n[ABORTED]\n" % error_text)
 
-	def start_test(self, new=True):
+	def setup(self):
 		# is this a .erl file?
 		if not self.view.is_scratch():
 			if os.path.splitext(self.view.file_name())[1] != '.erl':
 				return
 
-		# do not continue if no previous test exists and a redo was asked
-		global SUBLIMERL_CURRENT_TEST, SUBLIMERL_CURRENT_TEST_TYPE
-		if SUBLIMERL_CURRENT_TEST == None and new == False: return
-
 		# get module and module_tests filename
-		module_tests_name = self.get_module_name()
-		if module_tests_name == None: return
+		erlang_module_name = self.get_erlang_module_name()
+		if erlang_module_name == None: return
 
-		# init test
-		self.log("Starting tests (SublimErl v%s).\n" % SUBLIMERL_VERSION)
-
-		# file is saved?
+		# file saved?
 		if self.view.is_scratch():
-			self.log_error("This file has not been saved on disk: cannot start tests.")
+			self.log_error("This code has not been saved on disk.")
 			return
 
+		# set environment
+		self.set_env()
+
 		# set cwd to project's root path - so that rebar can access it
-		self.set_cwd_to_otp_project_root()
+		if self.set_cwd_to_otp_project_root() == False:
+			self.log_error("This code does not seem to be part of an OTP compilant project.")
+			return
 
 		# rebar check
-		if self.rebar_exists() == False:
+		self.get_rebar_path()
+		print self.rebar_path
+		if self.rebar_path == None:
 			self.log_error("Rebar cannot be found, please download and install from <https://github.com/basho/rebar>.")
 			return
 
 		# erl check
-		if self.erl_exists() == False:
+		self.get_erl_path()
+		if self.erl_path == None:
 			self.log_error("Erlang binary (erl) cannot be found.")
 			return
 
-		if new == True:
-			# reset test
-			SUBLIMERL_CURRENT_TEST = None
-			# get type
-			SUBLIMERL_CURRENT_TEST_TYPE = self.get_test_type(module_tests_name)
-		
-		if SUBLIMERL_CURRENT_TEST_TYPE == 'eunit':
-			self.start_eunit_test(module_tests_name, new)
-		elif SUBLIMERL_CURRENT_TEST_TYPE == 'ct':
-			self.start_ct_test(module_tests_name, new)
-		else:
-			self.log_error("Could not find tests to run.")
+		# ok we can use this launcher
+		self.available = True
 
+	def set_env(self):
+		# TODO: find real path variables
+		self.env = os.environ
+		self.env['PATH'] = os.environ['PATH'] + ':/usr/local/bin'
 
-	def get_test_type(self, module_tests_name):
-		if module_tests_name.find("_SUITE") != -1:
-			return 'ct'
-		return 'eunit'
-
-
-	def start_eunit_test(self, module_tests_name, new=True):
-		global SUBLIMERL_CURRENT_TEST
-
-		if new == True:
-			# get test
-			pos = module_tests_name.find("_tests")
-			if pos == -1:
-				# tests are in the same file
-				module_name = module_tests_name
-			else:
-				# tests are in different files
-				module_name = module_tests_name[0:pos]
-			module_filename = "%s.erl" % module_name
-
-			# get function name depending on cursor position
-			function_name = self.get_test_function_name()
-
-			# save test
-			SUBLIMERL_CURRENT_TEST = (module_filename, module_tests_name, function_name)
-		
-		else:
-			module_filename, module_tests_name, function_name = SUBLIMERL_CURRENT_TEST
-
-		# run test
-		self.test_runner.eunit_test(module_filename, module_tests_name, function_name)
-
-
-	def start_ct_test(self, module_tests_name, new=True):
-		global SUBLIMERL_CURRENT_TEST
-
-		if new == True:
-			pos = module_tests_name.find("_SUITE")
-			module_tests_name = module_tests_name[0:pos]
-
-			# save test
-			SUBLIMERL_CURRENT_TEST = module_tests_name
-		
-		else:
-			module_tests_name = SUBLIMERL_CURRENT_TEST
-
-		# run test
-		self.test_runner.ct_test(module_tests_name)
-
-
-	def get_module_name(self):
+	def get_erlang_module_name(self):
 		# find module declaration and get module name
-		module_region = self.view.find(r"^\s*-module\((?:[a-zA-Z0-9_]+)\)\.", 0)
+		module_region = self.view.find(r"^\s*-\s*module\s*\(\s*(?:[a-zA-Z0-9_]+)\s*\)\s*\.", 0)
 		if module_region != None:
-			m = re.match(r"^\s*-module\(([a-zA-Z0-9_]+)\)\.", self.view.substr(module_region))
+			m = re.match(r"^\s*-\s*module\s*\(\s*([a-zA-Z0-9_]+)\s*\)\s*\.", self.view.substr(module_region))
 			return m.group(1)
 
 
-	def get_test_function_name(self):
-		# get current line position
-		cursor_position = self.view.sel()[0].a
+	def set_cwd_to_otp_project_root(self):
+		# get otp directory
+		current_file_path = os.path.dirname(self.view.file_name())
+		otp_project_root = self.get_otp_project_root(current_file_path)
 
-		# find all regions with a test function definition
-		function_regions = self.view.find_all(r"(%.*)?([a-zA-Z0-9_]*_test_\(\)\s*->[^.]*\.)")
+		if otp_project_root == None: return False
 
-		# loop regions
-		matching_region = None
-		for region in function_regions:
-			region_content = self.view.substr(region)
-			if not re.match(r"%.*((?:[a-zA-Z0-9_]*)_test_)\(\)\s*->", region_content):
-				# function is not commented out, is cursor included in region?
-				if region.a <= cursor_position and cursor_position <= region.b:
-					matching_region = region
-					break
-
-		# get function name
-		if matching_region != None:
-			# get function name and arguments
-			m = re.match(r"((?:[a-zA-Z0-9_]*)_test_)\(\)\s*->(?:.|\n)", self.view.substr(matching_region))
-			if m != None:
-				return "%s/0" % m.group(1)
+		# set current directory to root - needed by rebar
+		os.chdir(os.path.abspath(otp_project_root))
 
 
-	def rebar_exists(self):
-		return self.test_runner.rebar_exists()
+	def get_otp_project_root(self, current_dir):
+		# if compliant, return
+		if self.is_otp_compliant_dir(current_dir) == True: return current_dir
+		# if went up to root, stop and return False
+		current_dir_split = current_dir.split(os.sep)
+		if len(current_dir_split) < 2: return
+		# walk up directory
+		current_dir_split.pop()
+		return self.get_otp_project_root(os.sep.join(current_dir_split))
 
-	def erl_exists(self):
-		return self.test_runner.erl_exists()
+	def is_otp_compliant_dir(self, directory_path):
+		return os.path.exists(os.path.join(directory_path, 'src'))
 
-	def log(self, text):
-		self.panel.write_to_panel(text)
+	def get_rebar_path(self):
+		retcode, data = self.execute_os_command('which rebar', block=True)
+		data = data.strip()
+		if retcode == 0 and len(data) > 0:
+			self.rebar_path = data
 
-	def log_error(self, text):
-		self.log("Error => %s\n[ABORTED]\n" % text)
+	def get_erl_path(self):
+		retcode, data = self.execute_os_command('which erl', block=True)
+		data = data.strip()
+		if retcode == 0 and len(data) > 0:
+			self.erl_path = data
 
-
-# panel
-class SublimErlPanel():
-
-	def __init__(self, view):
-		# init
-		self.window = view.window()
-		# create panel
-		self.panel_name = 'sublimerl_panel'
-		self.output_panel = self.window.get_output_panel(self.panel_name)
-		# color scheme
-		self.output_panel.settings().set("syntax", "Packages/SublimErl/SublimErl.tmLanguage")
-		self.output_panel.settings().set("color_scheme", "Packages/SublimErl/SublimErl.tmTheme")
-
-
-	def write_to_panel(self, text):
-		# output to the panel
-		panel = self.output_panel
-		panel_edit = panel.begin_edit()
-		panel.insert(panel_edit, panel.size(), text)
-		panel.end_edit(panel_edit)
-		panel.show(panel.size())
-		# shot panel
-		self.window.run_command("show_panel", {"panel": "output." + self.panel_name})
-
-
-# test runner
-class SublimErlTestRunner():
-
-	def __init__(self, parent):
-		# imported from parent
-		self.log = parent.log
-		self.log_error = parent.log_error
-		# get paths
-		self.rebar_path = self.get_rebar_path()
-		self.erl_path = self.get_erl_path()
-
-
-	def set_env(self):
-		# TODO: find real path variable
-		# TODO: save in init var
-		env = os.environ
-		env['PATH'] = os.environ['PATH'] + ':/usr/local/bin'
-		return env
-
-
-	def execute_os_command(self, os_cmd, block=True):
-		# p = subprocess.Popen(os_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, env=self.set_env())
-		# stdout, stderr = p.communicate()
-		# return (p.returncode, stdout, stderr)
-
+	def execute_os_command(self, os_cmd, block=False):
 		p = subprocess.Popen(os_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, env=self.set_env())
-		
 		if block == True:
 			stdout, stderr = p.communicate()
 			return (p.returncode, stdout)
 		else:
 			stdout = []
 			for line in p.stdout:
-				# self.log(line)
+				self.log(line)
 				stdout.append("%s\n" % line)
 			return (p.returncode, ''.join(stdout))
 
 
-	def rebar_exists(self):
-		return self.rebar_path != None
+# start new test
+class SublimErlCommand(sublime_plugin.TextCommand):
+	def run(self, edit):
+		launcher = SublimErlLauncher(self.view)
+		if not launcher.available == True: return
 
 
-	def erl_exists(self):
-		return self.erl_path != None
 
-
-	def get_rebar_path(self):
-		retcode, data = self.execute_os_command('which rebar')
-		data = data.strip()
-		if retcode == 0 and len(data) > 0:
-			return data
-
-
-	def get_erl_path(self):
-		retcode, data = self.execute_os_command('which erl')
-		data = data.strip()
-		if retcode == 0 and len(data) > 0:
-			return data
-
-
-	def eunit_test(self, module_filename, module_tests_name, function_name):
-		if function_name != None:
-			# specific function provided, start single test
-			self.log("Running test \"%s:%s\" for target module \"%s\".\n" % (module_tests_name, function_name, module_filename))
-			# compile all source code and test module
-			if self.compile_eunit_no_run() != 0: return		
-			# run single test
-			self.run_single_test(module_tests_name, function_name)
-		else:
-			# run all test functions in file
-			self.log("Running all tests in module \"%s.erl\" for target module \"%s\".\n" % (module_tests_name, module_filename))
-			# compile all source code and test module
-			self.compile_eunit_run_suite(module_tests_name)
-
-
-	def ct_test(self, module_tests_name):
-		# run CT for suite
-		self.log("Running tests of Common Tests SUITE \"%s.erl\".\n" % module_tests_name)
-		# compile all source code and test module
-		self.compile_all()
-		self.run_ct_suite(module_tests_name)
-
-
-	def compile_all(self):
-		# compile to ebin
-		retcode, data = self.execute_os_command('%s compile' % self.rebar_path)
-
-
-	def compile_eunit_no_run(self):
-		# call rebar to compile -  HACK: passing in a non-existing suite forces rebar to not run the test suite
-		retcode, data = self.execute_os_command('%s eunit suite=sublimerl_unexisting_test' % self.rebar_path, False)
-		if re.search(r"sublimerl_unexisting_test", data) != None:
-			# expected error returned (due to the hack)
-			return 0
-		# interpret
-		self.interpret_eunit_test_results(retcode, data)
-
-	
-	def compile_eunit_run_suite(self, suite):
-		retcode, data = self.execute_os_command('%s eunit suite=%s' % (self.rebar_path, suite), False)
-		# interpret
-		self.interpret_eunit_test_results(retcode, data)
-
-
-	def run_single_test(self, module_tests_name, function_name):
-		# build & run erl command
-		mod_function = "%s:%s" % (module_tests_name, function_name)
-		erl_command = "-noshell -pa .eunit -eval \"eunit:test({generator, fun %s})\" -s init stop" % mod_function
-		retcode, data = self.execute_os_command('%s %s' % (self.erl_path, erl_command), False)
-		# interpret
-		self.interpret_eunit_test_results(retcode, data)
-
-
-	def interpret_eunit_test_results(self, retcode, data):
-		# get outputs
-		if re.search(r"Test passed.", data):
-			# single test passed
-			self.log("\n=> TEST PASSED.\n")
-
-		elif re.search(r"All \d+ tests passed.", data):
-			# multiple tests passed
-			passed_count = re.search(r"All (\d+) tests passed.", data).group(1)
-			self.log("\n=> %s TESTS PASSED.\n" % passed_count)
-
-		elif re.search(r"Failed: \d+.", data):
-			# some tests failed
-			self.log('\n' + data)
-			failed_count = re.search(r"Failed: (\d+).", data).group(1)
-			self.log("\n=> %s TEST(S) FAILED.\n" % failed_count)
-
-		else:
-			self.log('\n' + data)
-			self.log("\n=> TEST(S) FAILED.\n")
-
-
-	def run_ct_suite(self, module_tests_name):
-		retcode, data = self.execute_os_command('%s ct suites=%s' % (self.rebar_path, module_tests_name), False)
-		# interpret
-		self.interpret_ct_test_results(retcode, data)
-
-
-	def interpret_ct_test_results(self, retcode, data):
-		# get outputs
-		if re.search(r"DONE.", data):
-			# test passed
-			passed_count = re.search(r"(\d+) ok, 0 failed of \d+ test cases", data).group(1)
-			self.log("\n=> %s TEST(S) PASSED.\n" % passed_count)
-			return
-
-		elif re.search(r"ERROR: One or more tests failed", data):
-			self.log('\n' + data)
-			failed_count = re.search(r"\d+ ok, (\d+) failed of \d+ test cases", data).group(1)
-			self.log("\n=> %s TEST(S) FAILED.\n" % failed_count)
-			self.log("** Hint: hit Command+Shift+C (by default) to show a browser with results. **\n")
-
-		else:
-			self.log('\n' + data)
-			self.log("\n=> TEST(S) FAILED.\n")
