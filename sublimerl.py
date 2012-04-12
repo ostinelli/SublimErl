@@ -278,10 +278,22 @@ class SublimErlTestRunner():
 		return env
 
 
-	def execute_os_command(self, os_cmd):
+	def execute_os_command(self, os_cmd, block=True):
+		# p = subprocess.Popen(os_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, env=self.set_env())
+		# stdout, stderr = p.communicate()
+		# return (p.returncode, stdout, stderr)
+
 		p = subprocess.Popen(os_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, env=self.set_env())
-		stdout, stderr = p.communicate()
-		return (p.returncode, stdout, stderr)
+		
+		if block == True:
+			stdout, stderr = p.communicate()
+			return (p.returncode, stdout)
+		else:
+			stdout = []
+			for line in p.stdout:
+				# self.log(line)
+				stdout.append("%s\n" % line)
+			return (p.returncode, ''.join(stdout))
 
 
 	def rebar_exists(self):
@@ -336,7 +348,7 @@ class SublimErlTestRunner():
 
 	def compile_eunit_no_run(self):
 		# call rebar to compile -  HACK: passing in a non-existing suite forces rebar to not run the test suite
-		retcode, data = self.execute_os_command('%s eunit suite=sublimerl_unexisting_test' % self.rebar_path)
+		retcode, data = self.execute_os_command('%s eunit suite=sublimerl_unexisting_test' % self.rebar_path, False)
 		if re.search(r"sublimerl_unexisting_test", data) != None:
 			# expected error returned (due to the hack)
 			return 0
@@ -345,7 +357,7 @@ class SublimErlTestRunner():
 
 	
 	def compile_eunit_run_suite(self, suite):
-		retcode, data = self.execute_os_command('%s eunit suite=%s' % (self.rebar_path, suite))
+		retcode, data = self.execute_os_command('%s eunit suite=%s' % (self.rebar_path, suite), False)
 		# interpret
 		self.interpret_eunit_test_results(retcode, data)
 
@@ -354,7 +366,7 @@ class SublimErlTestRunner():
 		# build & run erl command
 		mod_function = "%s:%s" % (module_tests_name, function_name)
 		erl_command = "-noshell -pa .eunit -eval \"eunit:test({generator, fun %s})\" -s init stop" % mod_function
-		retcode, data = self.execute_os_command('%s %s' % (self.erl_path, erl_command))
+		retcode, data = self.execute_os_command('%s %s' % (self.erl_path, erl_command), False)
 		# interpret
 		self.interpret_eunit_test_results(retcode, data)
 
@@ -382,7 +394,7 @@ class SublimErlTestRunner():
 
 
 	def run_ct_suite(self, module_tests_name):
-		retcode, data = self.execute_os_command('%s ct suites=%s' % (self.rebar_path, module_tests_name))
+		retcode, data = self.execute_os_command('%s ct suites=%s' % (self.rebar_path, module_tests_name), False)
 		# interpret
 		self.interpret_ct_test_results(retcode, data)
 
