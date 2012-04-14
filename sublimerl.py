@@ -178,6 +178,10 @@ class SublimErlLauncher():
 				stdout.append(line)
 			return (p.returncode, ''.join(stdout))
 
+	def compile_all(self):
+		# compile to ebin
+		retcode, data = self.execute_os_command('%s compile' % self.rebar_path, True)
+
 
 # test runner
 class SublimErlTestRunner(SublimErlLauncher):
@@ -251,6 +255,22 @@ class SublimErlTestRunner(SublimErlLauncher):
 		# run test
 		self.eunit_test(module_name, module_tests_name, function_name)
 
+	def start_ct_test(self, new=True):
+		global SUBLIMERL_CURRENT_TEST
+
+		if new == True:
+			pos = self.erlang_module_name.find("_SUITE")
+			module_tests_name = self.erlang_module_name[0:pos]
+
+			# save test
+			SUBLIMERL_CURRENT_TEST = module_tests_name
+		
+		else:
+			module_tests_name = SUBLIMERL_CURRENT_TEST
+
+		# run test
+		self.ct_test(module_tests_name)
+
 	def eunit_test(self, module_name, module_tests_name, function_name):
 		if function_name != None:
 			# specific function provided, start single test
@@ -258,7 +278,7 @@ class SublimErlTestRunner(SublimErlLauncher):
 			# compile all source code and test module
 			if self.compile_eunit_no_run() != 0: return
 			# run single test
-			self.run_single_test(module_tests_name, function_name)
+			self.run_single_eunit_test(module_tests_name, function_name)
 		else:
 			# run all test functions in file
 			self.log("Running all tests in module \"%s.erl\" for target module \"%s.erl\".\n\n" % (module_tests_name, module_name))
@@ -279,7 +299,7 @@ class SublimErlTestRunner(SublimErlLauncher):
 		# interpret
 		self.interpret_eunit_test_results(retcode, data)
 
-	def run_single_test(self, module_tests_name, function_name):
+	def run_single_eunit_test(self, module_tests_name, function_name):
 		# build & run erl command
 		mod_function = "%s:%s" % (module_tests_name, function_name)
 		erl_command = "-noshell -pa .eunit -eval \"eunit:test({generator, fun %s})\" -s init stop" % mod_function
@@ -305,7 +325,35 @@ class SublimErlTestRunner(SublimErlLauncher):
 
 		else:
 			self.log("\n=> TEST(S) FAILED.\n")
+
+	def ct_test(self, module_tests_name):
+		# run CT for suite
+		self.log("Running tests of Common Tests SUITE \"%s.erl\".\n\n" % module_tests_name)
+		# compile all source code and test module
+		self.compile_all()
+		self.run_ct_suite(module_tests_name)
 			
+	def run_ct_suite(self, module_tests_name):
+		retcode, data = self.execute_os_command('%s ct suites=%s' % (self.rebar_path, module_tests_name), False)
+		# interpret
+		self.interpret_ct_test_results(retcode, data)
+
+	def interpret_ct_test_results(self, retcode, data):
+		# get outputs
+		if re.search(r"DONE.", data):
+			# test passed
+			passed_count = re.search(r"(\d+) ok, 0 failed of \d+ test cases", data).group(1)
+			self.log("=> %s TEST(S) PASSED.\n" % passed_count)
+			return
+
+		elif re.search(r"ERROR: One or more tests failed", data):
+			failed_count = re.search(r"\d+ ok, (\d+) failed of \d+ test cases", data).group(1)
+			self.log("\n=> %s TEST(S) FAILED.\n" % failed_count)
+			self.log("** Hint: hit Command+Shift+C (by default) to show a browser with results. **\n")
+
+		else:
+			self.log("\n=> TEST(S) FAILED.\n")
+
 # start new test
 class SublimErlTestCommand(sublime_plugin.TextCommand):
 	def run(self, edit):
