@@ -384,3 +384,12 @@ class SublimErlTestRedoCommand(sublime_plugin.TextCommand):
 		# run tests
 		test_runner.start_test()
 
+# open CT results
+class SublimErlCtResultsCommand(sublime_plugin.TextCommand):
+	def run(self, edit):
+		# init
+		launcher = SublimErlLauncher(self.view, show_log=False, new=False)
+		if launcher.available == False: return
+		# open CT results
+		index_path = os.path.abspath(os.path.join('logs', 'index.html'))
+		if os.path.exists(index_path): webbrowser.open(index_path)
