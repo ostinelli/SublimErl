@@ -361,7 +361,7 @@ class SublimErlTestRunner(SublimErlLauncher):
 		elif re.search(r"ERROR: One or more tests failed", data):
 			failed_count = re.search(r"\d+ ok, (\d+) failed of \d+ test cases", data).group(1)
 			self.log("\n=> %s TEST(S) FAILED.\n" % failed_count)
-			self.log("** Hint: hit Command+Shift+C (by default) to show a browser with results. **\n")
+			self.log("** Hint: hit Ctrl-Alt-F8 (by default) to show a browser with Common Tests' results. **\n")
 
 		else:
 			self.log("\n=> TEST(S) FAILED.\n")

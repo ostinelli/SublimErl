@@ -1,5 +1,5 @@
 [
-	{ "keys": ["ctrl+shift+f8"], "command": "sublim_erl" },
-	{ "keys": ["ctrl+f8"], "command": "sublim_erl_redo" },
-	{ "keys": ["ctrl+shift+c"], "command": "sublim_erl_show_ct" }
+	{ "keys": ["ctrl+shift+f8"], "command": "sublim_erl_test",  "context": [{ "key": "selector", "operator": "equal", "operand": "source.erlang" }] },
+	{ "keys": ["ctrl+f8"], "command": "sublim_erl_test_redo" },
+	{ "keys": ["ctrl+alt+f8"], "command": "sublim_erl_ct_results" }
 ]
