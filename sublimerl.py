@@ -32,14 +32,15 @@ import sys, os, re, subprocess, threading, webbrowser
 
 # globals
 SUBLIMERL_VERSION = '0.1'
-SUBLIMERL_CURRENT_TEST = None
-SUBLIMERL_CURRENT_TEST_TYPE = None
+SUBLIMERL_LAST_TEST = None
+SUBLIMERL_LAST_TEST_TYPE = None
+SUBLIMERL_LAST_ROOT = None
 
 
 # core launcher & panel
 class SublimErlLauncher():
 
-	def __init__(self, view, show_log=True):
+	def __init__(self, view, new=True, show_log=True):
 		# init
 		self.panel_name = 'sublimerl'
 		self.panel_buffer = ''
@@ -52,6 +53,7 @@ class SublimErlLauncher():
 		self.available = False
 		# test vars
 		self.erlang_module_name = None
+		self.new = new
 		# setup panel
 		self.panel = self.window.get_output_panel(self.panel_name)
 		self.panel.settings().set("syntax", "Packages/SublimErl/SublimErl.tmLanguage")
@@ -81,22 +83,23 @@ class SublimErlLauncher():
 		global SUBLIMERL_VERSION
 		self.log("Starting tests (SublimErl v%s).\n" % SUBLIMERL_VERSION)
 
-		# file saved?
-		if self.view.is_scratch():
-			self.log_error("Please save this file to proceed.")
-			return
-		elif os.path.splitext(self.view.file_name())[1] != '.erl':
-			self.log_error("This is not a .erl file.")
-			return
-
-		# get module and module_tests filename
-		self.erlang_module_name = self.get_erlang_module_name()
-		if self.erlang_module_name == None:
-			self.log_error("Cannot find a -module declaration: please add one to proceed.")
-			return
-
 		# set environment
 		self.set_env()
+
+		if self.new == True:
+			# file saved?
+			if self.view.is_scratch():
+				self.log_error("Please save this file to proceed.")
+				return
+			elif os.path.splitext(self.view.file_name())[1] != '.erl':
+				self.log_error("This is not a .erl file.")
+				return
+
+			# get module and module_tests filename
+			self.erlang_module_name = self.get_erlang_module_name()
+			if self.erlang_module_name == None:
+				self.log_error("Cannot find a -module declaration: please add one to proceed.")
+				return
 
 		# set cwd to project's root path - so that rebar can access it
 		if self.set_cwd_to_otp_project_root() == False:
@@ -105,7 +108,6 @@ class SublimErlLauncher():
 
 		# rebar check
 		self.get_rebar_path()
-		print self.rebar_path
 		if self.rebar_path == None:
 			self.log_error("Rebar cannot be found, please download and install from <https://github.com/basho/rebar>.")
 			return
@@ -132,14 +134,19 @@ class SublimErlLauncher():
 			return m.group(1)
 
 	def set_cwd_to_otp_project_root(self):
-		# get otp directory
-		current_file_path = os.path.dirname(self.view.file_name())
-		otp_project_root = self.get_otp_project_root(current_file_path)
+		global SUBLIMERL_LAST_ROOT
+		if self.new == True:
+			# get otp directory
+			current_file_path = os.path.dirname(self.view.file_name())
+			otp_project_root = self.get_otp_project_root(current_file_path)
 
-		if otp_project_root == None: return False
+			if otp_project_root == None: return False
+
+			# save
+			SUBLIMERL_LAST_ROOT = os.path.abspath(otp_project_root)
 
 		# set current directory to root - needed by rebar
-		os.chdir(os.path.abspath(otp_project_root))
+		os.chdir(SUBLIMERL_LAST_ROOT)
 
 	def get_otp_project_root(self, current_dir):
 		# if compliant, return
@@ -186,19 +193,24 @@ class SublimErlLauncher():
 # test runner
 class SublimErlTestRunner(SublimErlLauncher):
 
-	def start_test(self, new=True):
-		# do not continue if no previous test exists and a redo was asked
-		global SUBLIMERL_CURRENT_TEST, SUBLIMERL_CURRENT_TEST_TYPE
-		if SUBLIMERL_CURRENT_TEST == None and new == False: return
+	def reset_current_test(self):
+		global SUBLIMERL_LAST_TEST, SUBLIMERL_LAST_TEST_TYPE
+		SUBLIMERL_LAST_TEST = None
+		SUBLIMERL_LAST_TEST_TYPE = None
 
-		if new == True:
+	def start_test(self):
+		# do not continue if no previous test exists and a redo was asked
+		global SUBLIMERL_LAST_TEST, SUBLIMERL_LAST_TEST_TYPE
+		if SUBLIMERL_LAST_TEST == None and self.new == False: return
+
+		if self.new == True:
 			# reset test
-			SUBLIMERL_CURRENT_TEST = None
+			self.reset_current_test()
 			# save test type
-			SUBLIMERL_CURRENT_TEST_TYPE = self.get_test_type()
+			SUBLIMERL_LAST_TEST_TYPE = self.get_test_type()
 		
-		if SUBLIMERL_CURRENT_TEST_TYPE == 'eunit': self.start_eunit_test(new)
-		elif SUBLIMERL_CURRENT_TEST_TYPE == 'ct': self.start_ct_test(new)
+		if SUBLIMERL_LAST_TEST_TYPE == 'eunit': self.start_eunit_test()
+		elif SUBLIMERL_LAST_TEST_TYPE == 'ct': self.start_ct_test()
 
 	def get_test_type(self):
 		if self.erlang_module_name.find("_SUITE") != -1: return 'ct'
@@ -228,10 +240,10 @@ class SublimErlTestRunner(SublimErlLauncher):
 			if m != None:
 				return "%s/0" % m.group(1)
 
-	def start_eunit_test(self, new=True):
-		global SUBLIMERL_CURRENT_TEST
+	def start_eunit_test(self):
+		global SUBLIMERL_LAST_TEST
 
-		if new == True:
+		if self.new == True:
 			# get test module name
 			pos = self.erlang_module_name.find("_tests")
 			if pos == -1:
@@ -246,27 +258,27 @@ class SublimErlTestRunner(SublimErlLauncher):
 
 			# save test
 			module_tests_name = self.erlang_module_name
-			SUBLIMERL_CURRENT_TEST = (module_name, module_tests_name, function_name)
+			SUBLIMERL_LAST_TEST = (module_name, module_tests_name, function_name)
 		
 		else:
 			# retrieve test info
-			module_name, module_tests_name, function_name = SUBLIMERL_CURRENT_TEST
+			module_name, module_tests_name, function_name = SUBLIMERL_LAST_TEST
 
 		# run test
 		self.eunit_test(module_name, module_tests_name, function_name)
 
-	def start_ct_test(self, new=True):
-		global SUBLIMERL_CURRENT_TEST
+	def start_ct_test(self):
+		global SUBLIMERL_LAST_TEST
 
-		if new == True:
+		if self.new == True:
 			pos = self.erlang_module_name.find("_SUITE")
 			module_tests_name = self.erlang_module_name[0:pos]
 
 			# save test
-			SUBLIMERL_CURRENT_TEST = module_tests_name
+			SUBLIMERL_LAST_TEST = module_tests_name
 		
 		else:
-			module_tests_name = SUBLIMERL_CURRENT_TEST
+			module_tests_name = SUBLIMERL_LAST_TEST
 
 		# run test
 		self.ct_test(module_tests_name)
@@ -367,8 +379,8 @@ class SublimErlTestCommand(sublime_plugin.TextCommand):
 class SublimErlTestRedoCommand(sublime_plugin.TextCommand):
 	def run(self, edit):
 		# init
-		test_runner = SublimErlTestRunner(self.view)
+		test_runner = SublimErlTestRunner(self.view, new=False)
 		if test_runner.available == False: return
 		# run tests
-		test_runner.start_test(new=True)
+		test_runner.start_test()
 
