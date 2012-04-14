@@ -307,7 +307,7 @@ class SublimErlTestRunner(SublimErlLauncher):
 			self.log("\n=> TEST(S) FAILED.\n")
 			
 # start new test
-class SublimErlCommand(sublime_plugin.TextCommand):
+class SublimErlTestCommand(sublime_plugin.TextCommand):
 	def run(self, edit):
 		# init
 		test_runner = SublimErlTestRunner(self.view)
@@ -315,5 +315,12 @@ class SublimErlCommand(sublime_plugin.TextCommand):
 		# run tests
 		test_runner.start_test()
 
-
+# repeat last test
+class SublimErlTestRedoCommand(sublime_plugin.TextCommand):
+	def run(self, edit):
+		# init
+		test_runner = SublimErlTestRunner(self.view)
+		if test_runner.available == False: return
+		# run tests
+		test_runner.start_test(new=True)
 
