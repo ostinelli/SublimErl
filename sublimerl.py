@@ -29,13 +29,17 @@
 import sublime, sublime_plugin
 import sys, os, re, subprocess, threading, webbrowser
 
+
+# globals
 SUBLIMERL_VERSION = '0.1'
+SUBLIMERL_CURRENT_TEST = None
+SUBLIMERL_CURRENT_TEST_TYPE = None
 
 
 # core launcher & panel
 class SublimErlLauncher():
 
-	def __init__(self, view):
+	def __init__(self, view, show_log=True):
 		# init
 		self.panel_name = 'sublimerl'
 		self.panel_buffer = ''
@@ -44,9 +48,15 @@ class SublimErlLauncher():
 		self.rebar_path = None
 		self.erl_path = None
 		self.env = None
-		# setup
-		self.panel = self.window.get_output_panel(self.panel_name)
+		self.show_log = show_log
 		self.available = False
+		# test vars
+		self.erlang_module_name = None
+		# setup panel
+		self.panel = self.window.get_output_panel(self.panel_name)
+		self.panel.settings().set("syntax", "Packages/SublimErl/SublimErl.tmLanguage")
+		self.panel.settings().set("color_scheme", "Packages/SublimErl/SublimErl.tmTheme")
+		# run setup
 		self.setup()
 
 	def update_panel(self):
@@ -59,25 +69,30 @@ class SublimErlLauncher():
 			self.window.run_command("show_panel", {"panel": "output.%s" % self.panel_name})
 
 	def log(self, text):
-		self.panel_buffer += text
-		sublime.set_timeout(self.update_panel, 0)
+		if self.show_log:
+			self.panel_buffer += text
+			sublime.set_timeout(self.update_panel, 0)
 
 	def log_error(self, error_text):
 		self.log("Error => %s\n[ABORTED]\n" % error_text)
 
 	def setup(self):
-		# is this a .erl file?
-		if not self.view.is_scratch():
-			if os.path.splitext(self.view.file_name())[1] != '.erl':
-				return
-
-		# get module and module_tests filename
-		erlang_module_name = self.get_erlang_module_name()
-		if erlang_module_name == None: return
+		# init test
+		global SUBLIMERL_VERSION
+		self.log("Starting tests (SublimErl v%s).\n" % SUBLIMERL_VERSION)
 
 		# file saved?
 		if self.view.is_scratch():
-			self.log_error("This code has not been saved on disk.")
+			self.log_error("Please save this file to proceed.")
+			return
+		elif os.path.splitext(self.view.file_name())[1] != '.erl':
+			self.log_error("This is not a .erl file.")
+			return
+
+		# get module and module_tests filename
+		self.erlang_module_name = self.get_erlang_module_name()
+		if self.erlang_module_name == None:
+			self.log_error("Cannot find a -module declaration: please add one to proceed.")
 			return
 
 		# set environment
@@ -116,7 +131,6 @@ class SublimErlLauncher():
 			m = re.match(r"^\s*-\s*module\s*\(\s*([a-zA-Z0-9_]+)\s*\)\s*\.", self.view.substr(module_region))
 			return m.group(1)
 
-
 	def set_cwd_to_otp_project_root(self):
 		# get otp directory
 		current_file_path = os.path.dirname(self.view.file_name())
@@ -126,7 +140,6 @@ class SublimErlLauncher():
 
 		# set current directory to root - needed by rebar
 		os.chdir(os.path.abspath(otp_project_root))
-
 
 	def get_otp_project_root(self, current_dir):
 		# if compliant, return
@@ -162,15 +175,145 @@ class SublimErlLauncher():
 			stdout = []
 			for line in p.stdout:
 				self.log(line)
-				stdout.append("%s\n" % line)
+				stdout.append(line)
 			return (p.returncode, ''.join(stdout))
 
 
+# test runner
+class SublimErlTestRunner(SublimErlLauncher):
+
+	def start_test(self, new=True):
+		# do not continue if no previous test exists and a redo was asked
+		global SUBLIMERL_CURRENT_TEST, SUBLIMERL_CURRENT_TEST_TYPE
+		if SUBLIMERL_CURRENT_TEST == None and new == False: return
+
+		if new == True:
+			# reset test
+			SUBLIMERL_CURRENT_TEST = None
+			# save test type
+			SUBLIMERL_CURRENT_TEST_TYPE = self.get_test_type()
+		
+		if SUBLIMERL_CURRENT_TEST_TYPE == 'eunit': self.start_eunit_test(new)
+		elif SUBLIMERL_CURRENT_TEST_TYPE == 'ct': self.start_ct_test(new)
+
+	def get_test_type(self):
+		if self.erlang_module_name.find("_SUITE") != -1: return 'ct'
+		return 'eunit'
+
+	def get_test_function_name(self):
+		# get current line position
+		cursor_position = self.view.sel()[0].a
+
+		# find all regions with a test function definition
+		function_regions = self.view.find_all(r"(%.*)?([a-zA-Z0-9_]*_test_\s*\(\s*\)\s*->[^.]*\.)")
+
+		# loop regions
+		matching_region = None
+		for region in function_regions:
+			region_content = self.view.substr(region)
+			if not re.match(r"%.*((?:[a-zA-Z0-9_]*)_test_)\s*\(\s*\)\s*->", region_content):
+				# function is not commented out, is cursor included in region?
+				if region.a <= cursor_position and cursor_position <= region.b:
+					matching_region = region
+					break
+
+		# get function name
+		if matching_region != None:
+			# get function name and arguments
+			m = re.match(r"((?:[a-zA-Z0-9_]*)_test_)\s*\(\s*\)\s*->(?:.|\n)", self.view.substr(matching_region))
+			if m != None:
+				return "%s/0" % m.group(1)
+
+	def start_eunit_test(self, new=True):
+		global SUBLIMERL_CURRENT_TEST
+
+		if new == True:
+			# get test module name
+			pos = self.erlang_module_name.find("_tests")
+			if pos == -1:
+				# tests are in the same file
+				module_name = self.erlang_module_name
+			else:
+				# tests are in different files
+				module_name = self.erlang_module_name[0:pos]
+
+			# get function name depending on cursor position
+			function_name = self.get_test_function_name()
+
+			# save test
+			module_tests_name = self.erlang_module_name
+			SUBLIMERL_CURRENT_TEST = (module_name, module_tests_name, function_name)
+		
+		else:
+			# retrieve test info
+			module_name, module_tests_name, function_name = SUBLIMERL_CURRENT_TEST
+
+		# run test
+		self.eunit_test(module_name, module_tests_name, function_name)
+
+	def eunit_test(self, module_name, module_tests_name, function_name):
+		if function_name != None:
+			# specific function provided, start single test
+			self.log("Running test \"%s:%s\" for target module \"%s.erl\".\n\n" % (module_tests_name, function_name, module_name))
+			# compile all source code and test module
+			if self.compile_eunit_no_run() != 0: return
+			# run single test
+			self.run_single_test(module_tests_name, function_name)
+		else:
+			# run all test functions in file
+			self.log("Running all tests in module \"%s.erl\" for target module \"%s.erl\".\n\n" % (module_tests_name, module_name))
+			# compile all source code and test module
+			self.compile_eunit_run_suite(module_tests_name)
+
+	def compile_eunit_no_run(self):
+		# call rebar to compile -  HACK: passing in a non-existing suite forces rebar to not run the test suite
+		retcode, data = self.execute_os_command('%s eunit suite=sublimerl_unexisting_test' % self.rebar_path, True)
+		if re.search(r"sublimerl_unexisting_test", data) != None:
+			# expected error returned (due to the hack)
+			return 0
+		# interpret
+		self.interpret_eunit_test_results(retcode, data)
+
+	def compile_eunit_run_suite(self, suite):
+		retcode, data = self.execute_os_command('%s eunit suite=%s' % (self.rebar_path, suite), False)
+		# interpret
+		self.interpret_eunit_test_results(retcode, data)
+
+	def run_single_test(self, module_tests_name, function_name):
+		# build & run erl command
+		mod_function = "%s:%s" % (module_tests_name, function_name)
+		erl_command = "-noshell -pa .eunit -eval \"eunit:test({generator, fun %s})\" -s init stop" % mod_function
+		retcode, data = self.execute_os_command('%s %s' % (self.erl_path, erl_command), False)
+		# interpret
+		self.interpret_eunit_test_results(retcode, data)
+
+	def interpret_eunit_test_results(self, retcode, data):
+		# get outputs
+		if re.search(r"Test passed.", data):
+			# single test passed
+			self.log("\n=> TEST PASSED.\n")
+
+		elif re.search(r"All \d+ tests passed.", data):
+			# multiple tests passed
+			passed_count = re.search(r"All (\d+) tests passed.", data).group(1)
+			self.log("\n=> %s TESTS PASSED.\n" % passed_count)
+
+		elif re.search(r"Failed: \d+.", data):
+			# some tests failed
+			failed_count = re.search(r"Failed: (\d+).", data).group(1)
+			self.log("\n=> %s TEST(S) FAILED.\n" % failed_count)
+
+		else:
+			self.log("\n=> TEST(S) FAILED.\n")
+			
 # start new test
 class SublimErlCommand(sublime_plugin.TextCommand):
 	def run(self, edit):
-		launcher = SublimErlLauncher(self.view)
-		if not launcher.available == True: return
+		# init
+		test_runner = SublimErlTestRunner(self.view)
+		if test_runner.available == False: return
+		# run tests
+		test_runner.start_test()
 
 
 

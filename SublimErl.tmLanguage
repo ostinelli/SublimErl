@@ -8,19 +8,11 @@
   <array>
     <dict>
       <key>comment</key>
-      <string>test fail</string>
+      <string>test description</string>
       <key>match</key>
-      <string>mymodule_tests:\d+: [a-zA-Z0-9_]+...\*failed\*</string>
+      <string>Running .*\"\.</string>
       <key>name</key>
-      <string>test.fail</string>
-    </dict>
-    <dict>
-      <key>comment</key>
-      <string>test fail</string>
-      <key>match</key>
-      <string>[a-zA-Z0-9_]+_SUITE:[a-zA-Z0-9_]+ failed on line \d+</string>
-      <key>name</key>
-      <string>test.fail</string>
+      <string>test.desc</string>
     </dict>
     <dict>
       <key>comment</key>
@@ -40,6 +32,22 @@
     </dict>
     <dict>
       <key>comment</key>
+      <string>test fail</string>
+      <key>match</key>
+      <string>[a-zA-Z0-9_]+:\d+: [a-zA-Z0-9_]+...\*failed\*</string>
+      <key>name</key>
+      <string>test.fail</string>
+    </dict>
+    <dict>
+      <key>comment</key>
+      <string>test fail</string>
+      <key>match</key>
+      <string>[a-zA-Z0-9_]+_SUITE:[a-zA-Z0-9_]+ failed on line \d+</string>
+      <key>name</key>
+      <string>test.fail</string>
+    </dict>
+    <dict>
+      <key>comment</key>
       <string>aborted</string>
       <key>match</key>
       <string>ABORTED</string>
@@ -50,6 +58,6 @@
   <key>scopeName</key>
   <string>tests.erlang</string>
   <key>uuid</key>
-  <string>72174d10-bb12-11e0-962b-112233445566</string>
+  <string>72174d10-bb12-11e0-962b-111111111357</string>
 </dict>
 </plist>

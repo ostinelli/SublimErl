@@ -1,5 +1,15 @@
 [
-	{ "keys": ["super+shift+f8"], "command": "sublim_erl" },
-	{ "keys": ["super+f8"], "command": "sublim_erl_redo" },
-	{ "keys": ["super+shift+c"], "command": "sublim_erl_show_ct" }
+	// { "keys": ["super+shift+f8"], "command": "sublim_erl",  "context": [{ "key": "selector", "operator": "equal", "operand": "source.erlang" }] }
+	{ "keys": ["super+shift+f8"], "command": "sublim_erl" }
 ]
+
+// [
+// 	{ "keys": ["super+shift+f8"], "command": "sublim_erl" },
+// 	{ "keys": ["super+f8"], "command": "sublim_erl_redo" },
+// 	{ "keys": ["super+shift+c"], "command": "sublim_erl_show_ct" }
+// ]
+
+// {
+// "keys": ["tab"], "command": "bullet_indent", "context":
+// [{ "key": "selector", "operator": "equal", "operand": "text.html.markdown" }]
+// },
