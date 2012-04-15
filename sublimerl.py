@@ -467,10 +467,9 @@ class SublimErlTestRunner(SublimErlLauncher):
 class SublimErlTextCommand(sublime_plugin.TextCommand):
 
 	def is_enabled(self):
-		view = sublime.active_window().active_view()
-		if view:
-			if view.settings().get('syntax') == 'Packages/Erlang/Erlang.tmLanguage':
-				return self.show_contextual_menu()
+		caret = self.view.sel()[0].a
+		if 'source.erlang' in self.view.scope_name(caret):
+			return self.show_contextual_menu()
 
 	def show_contextual_menu(self):
 		return True
