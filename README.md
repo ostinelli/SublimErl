@@ -60,14 +60,10 @@ To unleash the full power of the plugin, you will also need to comply to:
 TL;DR: it basically means to organize your project structure using:
 
 ```
---myproject
-  |-- ebin
-  |-- src
-      |-- myproject.app.src
-  |-- test
+-- myproject
+   |-- ebin
+   |-- src
+       |-- myproject.app.src
+   |-- test
 ```
 
-Pull Requests
--------------
-
-If you wish to contribute, please push all your requests to the [Dev](https://github.com/ostinelli/sublimerl/tree/dev) branch. The HEAD branch will contain stable versions.
