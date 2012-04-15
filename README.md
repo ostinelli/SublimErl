@@ -5,9 +5,11 @@ Overview
 
 SublimErl is a plugin for the text editor [Sublime Text 2](http://www.sublimetext.com/2). It allows you to:
 
-* Run **Eunit** tests (all tests from file / single test)
+* Run **Eunit** tests ( all tests from file / single test )
 * Run **Common Tests** ( single file )
 * Run **Dialyzer** tests ( single file )
+
+All within your test editor.
 
 Screenshot
 ----------
@@ -49,12 +51,12 @@ Dependencies
 To use SublimErl, you need to have:
 
 * The editor [Sublime Text 2](http://www.sublimetext.com/2).
-* [Erlang](http://www.erlang.org/download.html) (..obviously ^^_).
+* [Erlang](http://www.erlang.org/download.html) ( ..obviously ^^_ ).
 * Basho's [Rebar](https://github.com/basho/rebar).
 
 To unleash the full power of the plugin, you will also need to comply to:
 
-* OTP standards (i.e. have your project defined according to [OTP Directory Structure](http://www.erlang.org/doc/design_principles/applications.html#id73730)).
+* OTP standards ( i.e. have your project defined according to [OTP Directory Structure](http://www.erlang.org/doc/design_principles/applications.html#id73730) ).
 * [Rebar's conventions](https://github.com/basho/rebar/wiki/Rebar-and-OTP-conventions).
 
 TL;DR: it basically means to organize your project structure using:
