@@ -62,8 +62,12 @@ class SublimErlLauncher():
 		self.panel = self.window.get_output_panel(self.panel_name)
 		self.panel.settings().set("syntax", "Packages/SublimErl/SublimErl.tmLanguage")
 		self.panel.settings().set("color_scheme", "Packages/SublimErl/SublimErl.tmTheme")
+		if self.show_log:
+			self.window.run_command("show_panel", {"panel": "output.%s" % self.panel_name})
+		else:
+			self.window.run_command("hide_panel", {"panel": "output.%s" % self.panel_name})
 		# run setup
-		self.setup()
+		self.setup_launcher()
 
 	def update_panel(self):
 		if len(self.panel_buffer):
@@ -72,10 +76,6 @@ class SublimErlLauncher():
 			self.panel.end_edit(panel_edit)
 			self.panel.show(self.panel.size())
 			self.panel_buffer = ''
-			if self.show_log:
-				self.window.run_command("show_panel", {"panel": "output.%s" % self.panel_name})
-			else:
-				self.window.run_command("hide_panel", {"panel": "output.%s" % self.panel_name})
 
 	def log(self, text):
 		if self.show_log:
@@ -85,7 +85,7 @@ class SublimErlLauncher():
 	def log_error(self, error_text):
 		self.log("Error => %s\n[ABORTED]\n" % error_text)
 
-	def setup(self):
+	def setup_launcher(self):
 		# init test
 		global SUBLIMERL_VERSION
 		self.log("Starting tests (SublimErl v%s).\n" % SUBLIMERL_VERSION)
