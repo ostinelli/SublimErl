@@ -1,5 +1,5 @@
 # ==========================================================================================================
-# SublimErl - A Sublime Text 2 Plugin for Erlang TDD
+# SublimErl - A Sublime Text 2 Plugin for Erlang Integrated Testing
 # 
 # Copyright (C) 2012, Roberto Ostinelli <roberto@ostinelli.net>.
 # All rights reserved.
@@ -72,6 +72,8 @@ class SublimErlLauncher():
 			self.panel_buffer = ''
 			if self.show_log:
 				self.window.run_command("show_panel", {"panel": "output.%s" % self.panel_name})
+			else:
+				self.window.run_command("hide_panel", {"panel": "output.%s" % self.panel_name})
 
 	def log(self, text):
 		if self.show_log:
@@ -131,9 +133,38 @@ class SublimErlLauncher():
 		self.available = True
 
 	def set_env(self):
-		# TODO: find real path variables
-		self.env = os.environ
-		self.env['PATH'] = os.environ['PATH'] + ':/usr/local/bin'
+		self.env = os.environ.copy()
+		# TODO: enhance the finding of paths
+		if sublime.platform() == 'osx':
+			# get relevant file paths
+			etc_paths = '/etc/paths'
+			bash_profile_path = os.path.join(os.getenv('HOME'), '.bash_profile')
+			# get env paths
+			additional_paths = "%s:%s" % (self.readfiles_one_path_per_line([etc_paths]), self.readfiles_exported_paths([bash_profile_path]))
+			# add additional paths
+			self.env['PATH'] = self.env['PATH'] + additional_paths
+
+	def readfiles_one_path_per_line(self, file_paths):
+		concatenated_paths = []
+		for file_path in file_paths:
+			if os.path.exists(file_path):
+				f = open(file_path, 'r')
+				paths = f.read()
+				f.close()
+				paths = paths.split('\n')
+				for path in paths:
+					concatenated_paths.append(path.strip())
+		return ':'.join(concatenated_paths)
+
+	def readfiles_exported_paths(self, file_paths):
+		concatenated_paths = []
+		for file_path in file_paths:
+			if os.path.exists(file_path):
+				p = subprocess.Popen(". %s; env" % file_path, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+				data, stderr = p.communicate()
+				env = dict((line.split("=", 1) for line in data.splitlines()))
+				concatenated_paths.append(env['PATH'].strip())
+		return ''.join(concatenated_paths)
 
 	def get_erlang_module_name(self):
 		# find module declaration and get module name
@@ -189,7 +220,7 @@ class SublimErlLauncher():
 			self.dialyzer_path = data
 
 	def execute_os_command(self, os_cmd, block=False):
-		p = subprocess.Popen(os_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, env=self.set_env())
+		p = subprocess.Popen(os_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, env=self.env)
 		if block == True:
 			stdout, stderr = p.communicate()
 			return (p.returncode, stdout)
