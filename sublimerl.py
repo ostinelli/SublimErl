@@ -371,7 +371,10 @@ class SublimErlTestRunner(SublimErlLauncher):
 			self.run_single_eunit_test(module_tests_name, function_name)
 		else:
 			# run all test functions in file
-			self.log("Running all tests in module \"%s.erl\" for target module \"%s.erl\".\n\n" % (module_tests_name, module_name))
+			if module_tests_name != module_name:
+				self.log("Running all tests in module \"%s.erl\" for target module \"%s.erl\".\n\n" % (module_tests_name, module_name))
+			else:
+				self.log("Running all tests for target module \"%s.erl\".\n\n" % module_name)
 			# compile all source code and test module
 			self.compile_eunit_run_suite(module_tests_name)
 
