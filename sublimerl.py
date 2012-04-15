@@ -46,11 +46,13 @@ class SublimErlLauncher():
 		self.panel_buffer = ''
 		self.view = view
 		self.window = view.window()
-		self.rebar_path = None
-		self.erl_path = None
 		self.env = None
 		self.show_log = show_log
 		self.available = False
+		# paths
+		self.rebar_path = None
+		self.erl_path = None
+		self.dialyzer_path = None
 		# test vars
 		self.erlang_module_name = None
 		self.new = new
@@ -118,6 +120,12 @@ class SublimErlLauncher():
 			self.log_error("Erlang binary (erl) cannot be found.")
 			return
 
+		# dialyzer check
+		self.get_dialyzer_path()
+		if self.dialyzer_path == None:
+			self.log_error("Erlang Dyalizer cannot be found.")
+			return
+
 		# ok we can use this launcher
 		self.available = True
 
@@ -173,6 +181,12 @@ class SublimErlLauncher():
 		if retcode == 0 and len(data) > 0:
 			self.erl_path = data
 
+	def get_dialyzer_path(self):
+		retcode, data = self.execute_os_command('which dialyzer', block=True)
+		data = data.strip()
+		if retcode == 0 and len(data) > 0:
+			self.dialyzer_path = data
+
 	def execute_os_command(self, os_cmd, block=False):
 		p = subprocess.Popen(os_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, env=self.set_env())
 		if block == True:
@@ -185,7 +199,7 @@ class SublimErlLauncher():
 				stdout.append(line)
 			return (p.returncode, ''.join(stdout))
 
-	def compile_all(self):
+	def compile_source(self):
 		# compile to ebin
 		retcode, data = self.execute_os_command('%s compile' % self.rebar_path, True)
 
@@ -198,7 +212,7 @@ class SublimErlTestRunner(SublimErlLauncher):
 		SUBLIMERL_LAST_TEST = None
 		SUBLIMERL_LAST_TEST_TYPE = None
 
-	def start_test(self):
+	def start_test(self, dialyzer=False):
 		# do not continue if no previous test exists and a redo was asked
 		global SUBLIMERL_LAST_TEST, SUBLIMERL_LAST_TEST_TYPE
 		if SUBLIMERL_LAST_TEST == None and self.new == False: return
@@ -207,14 +221,16 @@ class SublimErlTestRunner(SublimErlLauncher):
 			# reset test
 			self.reset_current_test()
 			# save test type
-			SUBLIMERL_LAST_TEST_TYPE = self.get_test_type()
-		
+			SUBLIMERL_LAST_TEST_TYPE = self.get_test_type(dialyzer)
+
 		if SUBLIMERL_LAST_TEST_TYPE == 'eunit': self.start_eunit_test()
 		elif SUBLIMERL_LAST_TEST_TYPE == 'ct': self.start_ct_test()
+		elif SUBLIMERL_LAST_TEST_TYPE == 'dialyzer': self.start_dialyzer_test()
 
-	def get_test_type(self):
-		if self.erlang_module_name.find("_SUITE") != -1: return 'ct'
-		return 'eunit'
+	def get_test_type(self, dialyzer):
+		if dialyzer == True: return 'dialyzer'
+		elif self.erlang_module_name.find("_SUITE") != -1: return 'ct'
+		else: return 'eunit'
 
 	def get_test_function_name(self):
 		# get current line position
@@ -283,6 +299,20 @@ class SublimErlTestRunner(SublimErlLauncher):
 		# run test
 		self.ct_test(module_tests_name)
 
+	def start_dialyzer_test(self):
+		global SUBLIMERL_LAST_TEST
+
+		if self.new == True:
+			# save test
+			module_tests_name = self.erlang_module_name
+			SUBLIMERL_LAST_TEST = module_tests_name
+		
+		else:
+			module_tests_name = SUBLIMERL_LAST_TEST
+
+		# run test
+		self.dialyzer_test(module_tests_name)
+
 	def eunit_test(self, module_name, module_tests_name, function_name):
 		if function_name != None:
 			# specific function provided, start single test
@@ -306,16 +336,16 @@ class SublimErlTestRunner(SublimErlLauncher):
 		# interpret
 		self.interpret_eunit_test_results(retcode, data)
 
-	def compile_eunit_run_suite(self, suite):
-		retcode, data = self.execute_os_command('%s eunit suite=%s' % (self.rebar_path, suite), False)
-		# interpret
-		self.interpret_eunit_test_results(retcode, data)
-
 	def run_single_eunit_test(self, module_tests_name, function_name):
 		# build & run erl command
 		mod_function = "%s:%s" % (module_tests_name, function_name)
 		erl_command = "-noshell -pa .eunit -eval \"eunit:test({generator, fun %s})\" -s init stop" % mod_function
 		retcode, data = self.execute_os_command('%s %s' % (self.erl_path, erl_command), False)
+		# interpret
+		self.interpret_eunit_test_results(retcode, data)
+
+	def compile_eunit_run_suite(self, suite):
+		retcode, data = self.execute_os_command('%s eunit suite=%s' % (self.rebar_path, suite), False)
 		# interpret
 		self.interpret_eunit_test_results(retcode, data)
 
@@ -341,11 +371,9 @@ class SublimErlTestRunner(SublimErlLauncher):
 	def ct_test(self, module_tests_name):
 		# run CT for suite
 		self.log("Running tests of Common Tests SUITE \"%s.erl\".\n\n" % module_tests_name)
-		# compile all source code and test module
-		self.compile_all()
-		self.run_ct_suite(module_tests_name)
-			
-	def run_ct_suite(self, module_tests_name):
+		# compile all source code
+		self.compile_source()
+		# run suite
 		retcode, data = self.execute_os_command('%s ct suites=%s' % (self.rebar_path, module_tests_name), False)
 		# interpret
 		self.interpret_ct_test_results(retcode, data)
@@ -356,7 +384,6 @@ class SublimErlTestRunner(SublimErlLauncher):
 			# test passed
 			passed_count = re.search(r"(\d+) ok, 0 failed of \d+ test cases", data).group(1)
 			self.log("=> %s TEST(S) PASSED.\n" % passed_count)
-			return
 
 		elif re.search(r"ERROR: One or more tests failed", data):
 			failed_count = re.search(r"\d+ ok, (\d+) failed of \d+ test cases", data).group(1)
@@ -366,6 +393,25 @@ class SublimErlTestRunner(SublimErlLauncher):
 		else:
 			self.log("\n=> TEST(S) FAILED.\n")
 
+	def dialyzer_test(self, module_tests_name):
+		# run dialyzer for file
+		self.log("Running Dialyzer tests for \"%s.erl\".\n\n" % module_tests_name)
+		# compile eunit
+		self.compile_eunit_no_run()
+		# run dialyzer
+		retcode, data = self.execute_os_command('%s -n .eunit/%s.beam' % (self.dialyzer_path, module_tests_name), False)
+		# interpret
+		self.interpret_dialyzer_test_results(retcode, data)
+
+	def interpret_dialyzer_test_results(self, retcode, data):
+		# get outputs
+		if re.search(r"warnings were emitted", data):
+			self.log("\n=> TEST(S) FAILED.\n")
+		else:
+			self.log("=> TEST(S) PASSED.\n")
+
+
+
 # start new test
 class SublimErlTestCommand(sublime_plugin.TextCommand):
 	def run(self, edit):
@@ -374,6 +420,15 @@ class SublimErlTestCommand(sublime_plugin.TextCommand):
 		if test_runner.available == False: return
 		# run tests
 		test_runner.start_test()
+
+# start new test
+class SublimErlDialyzerCommand(sublime_plugin.TextCommand):
+	def run(self, edit):
+		# init
+		test_runner = SublimErlTestRunner(self.view)
+		if test_runner.available == False: return
+		# run tests
+		test_runner.start_test(dialyzer=True)
 
 # repeat last test
 class SublimErlTestRedoCommand(sublime_plugin.TextCommand):
