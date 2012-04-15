@@ -70,7 +70,8 @@ class SublimErlLauncher():
 			self.panel.end_edit(panel_edit)
 			self.panel.show(self.panel.size())
 			self.panel_buffer = ''
-			self.window.run_command("show_panel", {"panel": "output.%s" % self.panel_name})
+			if self.show_log:
+				self.window.run_command("show_panel", {"panel": "output.%s" % self.panel_name})
 
 	def log(self, text):
 		if self.show_log:
@@ -405,10 +406,10 @@ class SublimErlTestRunner(SublimErlLauncher):
 
 	def interpret_dialyzer_test_results(self, retcode, data):
 		# get outputs
-		if re.search(r"warnings were emitted", data):
-			self.log("\n=> TEST(S) FAILED.\n")
+		if re.search(r"passed successfully", data):
+			self.log("\n=> TEST(S) PASSED.\n")
 		else:
-			self.log("=> TEST(S) PASSED.\n")
+			self.log("\n=> TEST(S) FAILED.\n")
 
 
 
