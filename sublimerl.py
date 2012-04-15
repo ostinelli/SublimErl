@@ -490,3 +490,16 @@ class SublimErlCtResultsCommand(sublime_plugin.TextCommand):
 		# open CT results
 		index_path = os.path.abspath(os.path.join('logs', 'index.html'))
 		if os.path.exists(index_path): webbrowser.open(index_path)
+
+# listener on save
+class SublimErlListener(sublime_plugin.EventListener):
+	def on_post_save(self, view):
+		# init
+		launcher = SublimErlLauncher(view, show_log=False, new=True)
+		if launcher.available == False: return
+		# compile saved file
+		class SublimErlThread(threading.Thread):
+			def run(self):
+				launcher.compile_source()
+		SublimErlThread().start()
+
