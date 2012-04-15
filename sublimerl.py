@@ -460,8 +460,20 @@ class SublimErlTestRunner(SublimErlLauncher):
 
 
 
+# common text command class
+class SublimErlTextCommand(sublime_plugin.TextCommand):
+
+	def is_enabled(self):
+		view = sublime.active_window().active_view()
+		if view:
+			if view.settings().get('syntax') == 'Packages/Erlang/Erlang.tmLanguage':
+				return self.show_contextual_menu()
+
+	def show_contextual_menu(self):
+		return True
+
 # start new test
-class SublimErlTestCommand(sublime_plugin.TextCommand):
+class SublimErlTestCommand(SublimErlTextCommand):
 	def run(self, edit):
 		# init
 		test_runner = SublimErlTestRunner(self.view)
@@ -470,7 +482,7 @@ class SublimErlTestCommand(sublime_plugin.TextCommand):
 		test_runner.start_test()
 
 # start new test
-class SublimErlDialyzerCommand(sublime_plugin.TextCommand):
+class SublimErlDialyzerCommand(SublimErlTextCommand):
 	def run(self, edit):
 		# init
 		test_runner = SublimErlTestRunner(self.view)
@@ -479,7 +491,7 @@ class SublimErlDialyzerCommand(sublime_plugin.TextCommand):
 		test_runner.start_test(dialyzer=True)
 
 # repeat last test
-class SublimErlTestRedoCommand(sublime_plugin.TextCommand):
+class SublimErlTestRedoCommand(SublimErlTextCommand):
 	def run(self, edit):
 		# init
 		test_runner = SublimErlTestRunner(self.view, new=False)
@@ -487,8 +499,11 @@ class SublimErlTestRedoCommand(sublime_plugin.TextCommand):
 		# run tests
 		test_runner.start_test()
 
+	def show_contextual_menu(self):
+		return SUBLIMERL_LAST_TEST != None
+
 # open CT results
-class SublimErlCtResultsCommand(sublime_plugin.TextCommand):
+class SublimErlCtResultsCommand(SublimErlTextCommand):
 	def run(self, edit):
 		# init
 		launcher = SublimErlLauncher(self.view, show_log=False, new=False)
@@ -496,6 +511,9 @@ class SublimErlCtResultsCommand(sublime_plugin.TextCommand):
 		# open CT results
 		index_path = os.path.abspath(os.path.join('logs', 'index.html'))
 		if os.path.exists(index_path): webbrowser.open(index_path)
+
+	def show_contextual_menu(self):
+		return SUBLIMERL_LAST_ROOT != None
 
 # listener on save
 class SublimErlListener(sublime_plugin.EventListener):

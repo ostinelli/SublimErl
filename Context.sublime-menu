@@ -1,0 +1,13 @@
+[
+	{ "caption": "-" },
+	{
+		"caption": "SublimErl",
+		"children":
+			[
+				{ "caption": "Run Contextual Test", "command": "sublim_erl_test" },
+				{ "caption": "Run Dialyzer", "command": "sublim_erl_dialyzer" },
+				{ "caption": "Run Last Run test", "command": "sublim_erl_test_redo" },
+				{ "caption": "View CT results", "command": "sublim_erl_ct_results" }
+			]
+	}
+]
