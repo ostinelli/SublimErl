@@ -55,19 +55,16 @@ class SublimErlLauncher():
 		# test vars
 		self.erlang_module_name = None
 		self.new = new
-		# do not continue if no previous test exists and a redo was asked
-		global SUBLIMERL_LAST_TEST, SUBLIMERL_LAST_TEST_TYPE
-		if SUBLIMERL_LAST_TEST == None and self.new == False: return
 		# setup panel
-		self.panel = self.window.get_output_panel(self.panel_name)
-		self.panel.settings().set("syntax", "Packages/SublimErl/SublimErl.tmLanguage")
-		self.panel.settings().set("color_scheme", "Packages/SublimErl/SublimErl.tmTheme")
-		if self.show_log:
-			self.window.run_command("show_panel", {"panel": "output.%s" % self.panel_name})
-		else:
-			self.window.run_command("hide_panel", {"panel": "output.%s" % self.panel_name})
+		self.setup_panel()
 		# run setup
 		self.setup_launcher()
+
+	def setup_panel(self):
+		if self.show_log == True:
+			self.panel = self.window.get_output_panel(self.panel_name)
+			self.panel.settings().set("syntax", "Packages/SublimErl/SublimErl.tmLanguage")
+			self.panel.settings().set("color_scheme", "Packages/SublimErl/SublimErl.tmTheme")
 
 	def update_panel(self):
 		if len(self.panel_buffer):
@@ -76,6 +73,11 @@ class SublimErlLauncher():
 			self.panel.end_edit(panel_edit)
 			self.panel.show(self.panel.size())
 			self.panel_buffer = ''
+			# show/hide panel		
+			if self.show_log:
+				self.window.run_command("show_panel", {"panel": "output.%s" % self.panel_name})
+			else:
+				self.window.run_command("hide_panel", {"panel": "output.%s" % self.panel_name})
 
 	def log(self, text):
 		if self.show_log:
@@ -247,6 +249,10 @@ class SublimErlTestRunner(SublimErlLauncher):
 		SUBLIMERL_LAST_TEST_TYPE = None
 
 	def start_test(self, dialyzer=False):
+		# do not continue if no previous test exists and a redo was asked
+		global SUBLIMERL_LAST_TEST, SUBLIMERL_LAST_TEST_TYPE
+		if SUBLIMERL_LAST_TEST == None and self.new == False: return
+
 		if self.new == True:
 			# reset test
 			self.reset_current_test()
@@ -495,7 +501,7 @@ class SublimErlCtResultsCommand(sublime_plugin.TextCommand):
 class SublimErlListener(sublime_plugin.EventListener):
 	def on_post_save(self, view):
 		# init
-		launcher = SublimErlLauncher(view, show_log=False, new=True)
+		launcher = SublimErlLauncher(view, show_log=False, new=False)
 		if launcher.available == False: return
 		# compile saved file
 		class SublimErlThread(threading.Thread):
