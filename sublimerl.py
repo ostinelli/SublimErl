@@ -29,7 +29,6 @@
 import sublime, sublime_plugin
 import sys, os, re, subprocess, threading, webbrowser
 
-
 # globals
 SUBLIMERL_VERSION = '0.1'
 SUBLIMERL_LAST_TEST = None
@@ -313,8 +312,12 @@ class SublimErlTestRunner(SublimErlLauncher):
 			module_name, module_tests_name, function_name = SUBLIMERL_LAST_TEST
 
 		# run test
-		self.eunit_test(module_name, module_tests_name, function_name)
-
+		this = self
+		class SublimErlThread(threading.Thread):
+			def run(self):
+				this.eunit_test(module_name, module_tests_name, function_name)
+		SublimErlThread().start()
+		
 	def start_ct_test(self):
 		global SUBLIMERL_LAST_TEST
 
@@ -329,7 +332,11 @@ class SublimErlTestRunner(SublimErlLauncher):
 			module_tests_name = SUBLIMERL_LAST_TEST
 
 		# run test
-		self.ct_test(module_tests_name)
+		this = self
+		class SublimErlThread(threading.Thread):
+			def run(self):
+				this.ct_test(module_tests_name)
+		SublimErlThread().start()
 
 	def start_dialyzer_test(self):
 		global SUBLIMERL_LAST_TEST
@@ -343,7 +350,11 @@ class SublimErlTestRunner(SublimErlLauncher):
 			module_tests_name = SUBLIMERL_LAST_TEST
 
 		# run test
-		self.dialyzer_test(module_tests_name)
+		this = self
+		class SublimErlThread(threading.Thread):
+			def run(self):
+				this.dialyzer_test(module_tests_name)
+		SublimErlThread().start()
 
 	def eunit_test(self, module_name, module_tests_name, function_name):
 		if function_name != None:
