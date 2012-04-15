@@ -418,7 +418,7 @@ class SublimErlTestRunner(SublimErlLauncher):
 
 	def ct_test(self, module_tests_name):
 		# run CT for suite
-		self.log("Running tests of Common Tests SUITE \"%s.erl\".\n\n" % module_tests_name)
+		self.log("Running tests of Common Tests SUITE \"%s_SUITE.erl\".\n\n" % module_tests_name)
 		# compile all source code
 		self.compile_source()
 		# run suite
