@@ -55,6 +55,9 @@ class SublimErlLauncher():
 		# test vars
 		self.erlang_module_name = None
 		self.new = new
+		# do not continue if no previous test exists and a redo was asked
+		global SUBLIMERL_LAST_TEST, SUBLIMERL_LAST_TEST_TYPE
+		if SUBLIMERL_LAST_TEST == None and self.new == False: return
 		# setup panel
 		self.panel = self.window.get_output_panel(self.panel_name)
 		self.panel.settings().set("syntax", "Packages/SublimErl/SublimErl.tmLanguage")
@@ -244,10 +247,6 @@ class SublimErlTestRunner(SublimErlLauncher):
 		SUBLIMERL_LAST_TEST_TYPE = None
 
 	def start_test(self, dialyzer=False):
-		# do not continue if no previous test exists and a redo was asked
-		global SUBLIMERL_LAST_TEST, SUBLIMERL_LAST_TEST_TYPE
-		if SUBLIMERL_LAST_TEST == None and self.new == False: return
-
 		if self.new == True:
 			# reset test
 			self.reset_current_test()
