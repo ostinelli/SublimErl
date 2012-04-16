@@ -43,7 +43,9 @@ Usage
 * Re-Run the **previous test**: hit `Command-F8` ( you do not need to be viewing the test to launch it )
 * View **Common Tests results** in browser: hit `Command-Option-F8` (OSX) | `Command-Alt-F8` (Linux/Win)
 
-A brief introduction video can be seen [[[[HERE]]]]
+A brief introduction video can be seen [here](http://www.youtube.com/watch?v=T0rD0CQM4Yg):
+
+[![SublimErl screenshot](http://farm8.staticflickr.com/7263/6935974110_c07c6a6afe_b.jpg)](http://www.youtube.com/watch?v=T0rD0CQM4Yg)
 
 Dependencies
 ------------
@@ -68,4 +70,3 @@ TL;DR: it basically means to organize your project structure using:
        |-- myproject.app.src
    |-- test
 ```
-
