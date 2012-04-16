@@ -29,7 +29,7 @@ Go to your Sublime Text 2 `Packages` directory
 and clone the repository using the command below:
 
 ``` shell
-git clone https://ostinelli@github.com/ostinelli/SublimErl.git
+git clone https://github.com/ostinelli/SublimErl.git
 ```
 You may also consider heading to the [downloads](https://github.com/ostinelli/SublimErl/downloads) section and unzipping the downloaded file into the `Packages` directory.
 
