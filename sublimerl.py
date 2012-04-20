@@ -465,18 +465,27 @@ class SublimErlTestRunner(SublimErlLauncher):
 
 # common text command class
 class SublimErlTextCommand(sublime_plugin.TextCommand):
+	def run(self, edit):
+		# run only if context matches
+		if self._context_match(): return self.run_command(edit)
+
+	def _context_match(self):
+		# context matches if lang is source.erlang and if platofmr is not windows
+		caret = self.view.sel()[0].a
+		if 'source.erlang' in self.view.scope_name(caret) and sublime.platform() != 'windows': return True
+		else: return False
 
 	def is_enabled(self):
-		caret = self.view.sel()[0].a
-		if 'source.erlang' in self.view.scope_name(caret):
-			return self.show_contextual_menu()
+		# context menu
+		if self._context_match(): return self.show_contextual_menu()
 
 	def show_contextual_menu(self):
+		# can be overridden
 		return True
 
 # start new test
 class SublimErlTestCommand(SublimErlTextCommand):
-	def run(self, edit):
+	def run_command(self, edit):
 		# init
 		test_runner = SublimErlTestRunner(self.view)
 		if test_runner.available == False: return
@@ -485,7 +494,7 @@ class SublimErlTestCommand(SublimErlTextCommand):
 
 # start new test
 class SublimErlDialyzerCommand(SublimErlTextCommand):
-	def run(self, edit):
+	def run_command(self, edit):
 		# init
 		test_runner = SublimErlTestRunner(self.view)
 		if test_runner.available == False: return
@@ -494,7 +503,7 @@ class SublimErlDialyzerCommand(SublimErlTextCommand):
 
 # repeat last test
 class SublimErlTestRedoCommand(SublimErlTextCommand):
-	def run(self, edit):
+	def run_command(self, edit):
 		# init
 		test_runner = SublimErlTestRunner(self.view, new=False)
 		if test_runner.available == False: return
@@ -506,7 +515,7 @@ class SublimErlTestRedoCommand(SublimErlTextCommand):
 
 # open CT results
 class SublimErlCtResultsCommand(SublimErlTextCommand):
-	def run(self, edit):
+	def run_command(self, edit):
 		# init
 		launcher = SublimErlLauncher(self.view, show_log=False, new=False)
 		if launcher.available == False: return
@@ -520,6 +529,9 @@ class SublimErlCtResultsCommand(SublimErlTextCommand):
 # listener on save
 class SublimErlListener(sublime_plugin.EventListener):
 	def on_post_save(self, view):
+		# ensure context matches
+		caret = view.sel()[0].a
+		if not 'source.erlang' in view.scope_name(caret): return
 		# init
 		launcher = SublimErlLauncher(view, show_log=False, new=False)
 		if launcher.available == False: return
@@ -528,4 +540,3 @@ class SublimErlListener(sublime_plugin.EventListener):
 			def run(self):
 				launcher.compile_source()
 		SublimErlThread().start()
-
