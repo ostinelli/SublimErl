@@ -179,7 +179,7 @@ class SublimErlLauncher():
 
 	def set_cwd_to_otp_project_root(self):
 		global SUBLIMERL_LAST_ROOT
-		if self.new == True:
+		if self.new == True or SUBLIMERL_LAST_ROOT == None:
 			# get otp directory
 			current_file_path = os.path.dirname(self.view.file_name())
 			otp_project_root = self.get_otp_project_root(current_file_path)
@@ -190,7 +190,7 @@ class SublimErlLauncher():
 			SUBLIMERL_LAST_ROOT = os.path.abspath(otp_project_root)
 
 		# set current directory to root - needed by rebar
-		if SUBLIMERL_LAST_ROOT: os.chdir(SUBLIMERL_LAST_ROOT)
+		os.chdir(SUBLIMERL_LAST_ROOT)
 
 	def get_otp_project_root(self, current_dir):
 		# if compliant, return
@@ -238,7 +238,6 @@ class SublimErlLauncher():
 	def compile_source(self):
 		# compile to ebin
 		retcode, data = self.execute_os_command('%s compile' % self.rebar_path, True)
-
 
 # test runner
 class SublimErlTestRunner(SublimErlLauncher):
@@ -531,7 +530,7 @@ class SublimErlListener(sublime_plugin.EventListener):
 	def on_post_save(self, view):
 		# ensure context matches
 		caret = view.sel()[0].a
-		if not 'source.erlang' in view.scope_name(caret): return
+		if not ('source.erlang' in view.scope_name(caret) and sublime.platform() != 'windows'): return
 		# init
 		launcher = SublimErlLauncher(view, show_log=False, new=False)
 		if launcher.available == False: return
