@@ -1,6 +1,0 @@
-[
-	{ "keys": ["ctrl+shift+f8"], "command": "sublim_erl_test", "context": [{ "key": "selector", "operator": "equal", "operand": "source.erlang" }] },
-	{ "keys": ["ctrl+shift+f9"], "command": "sublim_erl_dialyzer", "context": [{ "key": "selector", "operator": "equal", "operand": "source.erlang" }] },
-	{ "keys": ["ctrl+f8"], "command": "sublim_erl_test_redo" },
-	{ "keys": ["ctrl+alt+f8"], "command": "sublim_erl_ct_results" }
-]

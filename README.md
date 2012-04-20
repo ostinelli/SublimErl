@@ -20,18 +20,25 @@ Here's a screenshot of SublimErl running an Eunit specific test in file.
 
 Installation
 ------------
-Go to your Sublime Text 2 `Packages` directory
+SublimErl currently supports only on **OSX** and **Linux**. There are 3 ways to install it.
+
+##### 1. Sublime Package Control
+Download and install the [Sublime Package Control](http://wbond.net/sublime_packages/package_control). This package controller allows you to easily manage your Sublime Text 2 plugins (installs / removals / upgrades).
+
+##### 2. Git Clone
+Go to your Sublime Text 2 `Packages` directory:
 
 * OS X: `~/Library/Application Support/Sublime Text\ 2/Packages`
 * Linux: `~/.Sublime Text 2/Packages/`
-* Windows: `%APPDATA%/Sublime Text 2/Packages/`
 
 and clone the repository using the command below:
 
 ``` shell
 git clone https://github.com/ostinelli/SublimErl.git
 ```
-You may also consider heading to the [downloads](https://github.com/ostinelli/SublimErl/downloads) section and unzipping the downloaded file into the `Packages` directory.
+
+##### 3. File Download
+Head to the [downloads](https://github.com/ostinelli/SublimErl/downloads) section and unzipping the downloaded file into the Sublime Text 2 `Packages` directory.
 
 Usage
 -----
