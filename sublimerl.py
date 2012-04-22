@@ -51,6 +51,7 @@ class SublimErlLauncher():
 		# paths
 		self.rebar_path = None
 		self.erl_path = None
+		self.escript_path = None
 		self.dialyzer_path = None
 		# test vars
 		self.erlang_module_name = None
@@ -63,6 +64,7 @@ class SublimErlLauncher():
 	def setup_panel(self):
 		if self.show_log == True:
 			self.panel = self.window.get_output_panel(self.panel_name)
+			# TODO: have this set as relative path
 			self.panel.settings().set("syntax", "Packages/SublimErl/SublimErl.hidden-tmLanguage")
 			self.panel.settings().set("color_scheme", "Packages/SublimErl/SublimErl.hidden-tmTheme")
 
@@ -87,6 +89,9 @@ class SublimErlLauncher():
 	def log_error(self, error_text):
 		self.log("Error => %s\n[ABORTED]\n" % error_text)
 
+	def plugin_path(self):
+		return os.path.join(sublime.packages_path(), 'SublimErl')
+		
 	def setup_launcher(self):
 		# init test
 		global SUBLIMERL_VERSION
@@ -125,6 +130,12 @@ class SublimErlLauncher():
 		self.get_erl_path()
 		if self.erl_path == None:
 			self.log_error("Erlang binary (erl) cannot be found.")
+			return
+
+		# escript check
+		self.get_escript_path()
+		if self.escript_path == None:
+			self.log_error("Erlang binary (escript) cannot be found.")
 			return
 
 		# dialyzer check
@@ -189,8 +200,8 @@ class SublimErlLauncher():
 			# save
 			SUBLIMERL_LAST_ROOT = os.path.abspath(otp_project_root)
 
-		# set current directory to root - needed by rebar
-		os.chdir(SUBLIMERL_LAST_ROOT)
+		# TODO: SWITCH THIS set current directory to root - needed by rebar
+		# os.chdir(SUBLIMERL_LAST_ROOT)
 
 	def get_otp_project_root(self, current_dir):
 		# if compliant, return
@@ -216,6 +227,12 @@ class SublimErlLauncher():
 		data = data.strip()
 		if retcode == 0 and len(data) > 0:
 			self.erl_path = data
+
+	def get_escript_path(self):
+		retcode, data = self.execute_os_command('which escript', block=True)
+		data = data.strip()
+		if retcode == 0 and len(data) > 0:
+			self.escript_path = data
 
 	def get_dialyzer_path(self):
 		retcode, data = self.execute_os_command('which dialyzer', block=True)
@@ -469,7 +486,7 @@ class SublimErlTextCommand(sublime_plugin.TextCommand):
 		if self._context_match(): return self.run_command(edit)
 
 	def _context_match(self):
-		# context matches if lang is source.erlang and if platofmr is not windows
+		# context matches if lang is source.erlang and if platfomr is not windows
 		caret = self.view.sel()[0].a
 		if 'source.erlang' in self.view.scope_name(caret) and sublime.platform() != 'windows': return True
 		else: return False

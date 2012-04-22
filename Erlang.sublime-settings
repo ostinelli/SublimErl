@@ -1,0 +1,8 @@
+{
+	// trigger autocomplete
+	"auto_complete_triggers": [ {"selector": "source.erlang", "characters": ":"} ]
+
+	// "erlang_disasm": "{
+		// 'hello': [ ('greeting/2\tTag', 'greeting(${1:param1}, ${2:param2}) ->\\n\\t') ]
+		// }"
+}
