@@ -33,7 +33,8 @@ from sublimerl import SublimErlLauncher
 # globals
 SUBLIMERL_COMPLETIONS_ERLANG_LIBS = None
 SUBLIMERL_COMPLETIONS_ERLANG_LIBS_REBUILD = False
-# SUBLIMERL_COMPLETIONS_PROJECT = None
+SUBLIMERL_COMPLETIONS_PROJECT = None
+SUBLIMERL_COMPLETIONS_PROJECT_REBUILD = False
 
 
 # listener
@@ -41,10 +42,15 @@ class SublimErlCompletionsListener(sublime_plugin.EventListener):
 
 	def get_available_completions(self):
 		global SUBLIMERL_COMPLETIONS_ERLANG_LIBS, SUBLIMERL_COMPLETIONS_ERLANG_LIBS_REBUILD
+		global SUBLIMERL_COMPLETIONS_PROJECT, SUBLIMERL_COMPLETIONS_PROJECT_REBUILD
 		# can we load a previously generated file?
 		if SUBLIMERL_COMPLETIONS_ERLANG_LIBS == None: self.load_erlang_lib_completions()
 		# start rebuilding, if not yet done in this session
 		if SUBLIMERL_COMPLETIONS_ERLANG_LIBS_REBUILD == False: self.generate_erlang_lib_completions()
+		# try loading cuyrrent project files
+		if SUBLIMERL_COMPLETIONS_PROJECT == None: self.load_project_completions()
+		# start rebuilding, if not yet done in this session
+		if SUBLIMERL_COMPLETIONS_PROJECT_REBUILD == False: self.generate_project_completions()
 
 	def generate_erlang_lib_completions(self):
 		launcher = self.launcher
@@ -82,6 +88,42 @@ class SublimErlCompletionsListener(sublime_plugin.EventListener):
 					SUBLIMERL_COMPLETIONS_ERLANG_LIBS = eval(completions)
 		SublimErlThread().start()
 
+	def generate_project_completions(self):
+		launcher = self.launcher
+		load_project_completions = self.load_project_completions
+		class SublimErlThread(threading.Thread):
+			def run(self):
+				# change cwd - TODO: check that this doesn't interfere with other plugins
+				current_working_directory = os.getcwd()
+				os.chdir(launcher.plugin_path())
+				# run escript to get all erlang lib exports
+				escript_command = "sublimerl_libparser.escript \"%s/ebin\" \"Current-Project\"" % launcher.get_project_root()
+				retcode, data = launcher.execute_os_command('%s %s' % (launcher.escript_path, escript_command))
+				# switch back to original cwd
+				os.chdir(current_working_directory)
+				# set new status
+				global SUBLIMERL_COMPLETIONS_PROJECT_REBUILD
+				SUBLIMERL_COMPLETIONS_PROJECT_REBUILD = True
+				# trigger event to reload completions
+				sublime.set_timeout(load_project_completions, 0)
+		SublimErlThread().start()
+
+	def load_project_completions(self):
+		# load completetions
+		plugin_path = self.launcher.plugin_path()
+		class SublimErlThread(threading.Thread):
+			def run(self):
+				disasm_filepath = os.path.join(plugin_path, "Current-Project.disasm")
+				if os.path.exists(disasm_filepath):
+					# load file
+					f = open(disasm_filepath, 'r')
+					completions = f.read()
+					f.close()
+					# set
+					global SUBLIMERL_COMPLETIONS_PROJECT
+					SUBLIMERL_COMPLETIONS_PROJECT = eval(completions)
+		SublimErlThread().start()
+
 	# CALLBACK ON VIEW SAVE
 	def on_post_save(self, view):
 		# ensure context matches
@@ -90,11 +132,15 @@ class SublimErlCompletionsListener(sublime_plugin.EventListener):
 		# init
 		launcher = SublimErlLauncher(view, show_log=False, new=False)
 		if launcher.available == False: return
-		# compile saved file
+
+		# compile saved file & reload completions
+		generate_project_completions = self.generate_project_completions
 		class SublimErlThread(threading.Thread):
 			def run(self):
 				# compile
 				launcher.compile_source()
+				# trigger event to reload completions
+				sublime.set_timeout(generate_project_completions, 0)
 		SublimErlThread().start()
 
 	# CALLBACK ON VIEW ACTIVATED
@@ -127,8 +173,11 @@ class SublimErlCompletionsListener(sublime_plugin.EventListener):
 		if SUBLIMERL_COMPLETIONS_ERLANG_LIBS == None: return
 
 		# check for existance		
-		if not SUBLIMERL_COMPLETIONS_ERLANG_LIBS.has_key(function_name): return
+		if SUBLIMERL_COMPLETIONS_ERLANG_LIBS.has_key(function_name): available_completions = SUBLIMERL_COMPLETIONS_ERLANG_LIBS[function_name]
+		elif SUBLIMERL_COMPLETIONS_PROJECT.has_key(function_name): available_completions = SUBLIMERL_COMPLETIONS_PROJECT[function_name]
+		else: return
+
 		# return snippets
-		return (SUBLIMERL_COMPLETIONS_ERLANG_LIBS[function_name], sublime.INHIBIT_WORD_COMPLETIONS | sublime.INHIBIT_EXPLICIT_COMPLETIONS)
+		return (available_completions, sublime.INHIBIT_WORD_COMPLETIONS | sublime.INHIBIT_EXPLICIT_COMPLETIONS)
 
 

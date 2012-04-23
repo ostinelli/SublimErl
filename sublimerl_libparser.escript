@@ -30,15 +30,19 @@
 %% ==========================================================================================================
 -mode(compile).
 
+% command line exposure
 main([Basename]) ->
 	gen_completion_files(Basename);
+
+main([SearchPath, Basename]) ->
+	gen_completion_files(SearchPath, Basename);
 
 main(_) ->
 	halt(1).
 
 % generate files
 gen_completion_files(Basename) ->
-	gen_completion_files(code:lib_dir(), Basename).
+	gen_completion_files(Basename, code:lib_dir()).
 gen_completion_files(SearchPath, Basename) ->
 	% loop all beam files
 	F = fun(FilePath, {AccModules, AccDisasm}) ->
@@ -59,10 +63,15 @@ gen_completion_files(SearchPath, Basename) ->
 	file:write(DisasmFile, "{\n" ++ DisasmFileContents ++ "\n}"),
 	file:close(DisasmFile),
 	% write to .sublime-completions file
-	{ok, CompletionsFile} = file:open(Basename ++ ".sublime-completions", [write, raw]),
-	CompletionsFileContents = string:join(ModuleCompletions, ",\n"),
-	file:write(CompletionsFile, "{ \"scope\": \"source.erlang\", \"completions\": [ \"erlang\", \n" ++ CompletionsFileContents ++ "\n]}"),
-	file:close(CompletionsFile).
+	case ModuleCompletions of
+		[] ->
+			ok;
+		_ ->
+			{ok, CompletionsFile} = file:open(Basename ++ ".sublime-completions", [write, raw]),
+			CompletionsFileContents = string:join(ModuleCompletions, ",\n"),
+			file:write(CompletionsFile, "{ \"scope\": \"source.erlang\", \"completions\": [ \"erlang\", \n" ++ CompletionsFileContents ++ "\n]}"),
+			file:close(CompletionsFile)
+	end.
 
 % generate all snippets for the exports
 gen_snippets(Exports) ->

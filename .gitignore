@@ -1,5 +1,7 @@
 *.pyc
 *.cache
+Current-Project.disasm
+Current-Project.sublime-completions
 
 # OSX
 .DS_Store
