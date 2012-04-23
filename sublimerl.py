@@ -437,6 +437,9 @@ class SublimErlTestRunner(SublimErlLauncher):
 			failed_count = re.search(r"Failed: (\d+).", data).group(1)
 			self.log("\n=> %s TEST(S) FAILED.\n" % failed_count)
 
+		elif re.search(r"There were no tests to run.", data):
+			self.log("\n=> NO TESTS TO RUN.\n")
+
 		else:
 			self.log("\n=> TEST(S) FAILED.\n")
 
@@ -455,7 +458,10 @@ class SublimErlTestRunner(SublimErlLauncher):
 		if re.search(r"DONE.", data):
 			# test passed
 			passed_count = re.search(r"(\d+) ok, 0 failed of \d+ test cases", data).group(1)
-			self.log("=> %s TEST(S) PASSED.\n" % passed_count)
+			if int(passed_count) > 0:
+				self.log("=> %s TEST(S) PASSED.\n" % passed_count)
+			else:
+				self.log("=> NO TESTS TO RUN.\n")
 
 		elif re.search(r"ERROR: One or more tests failed", data):
 			failed_count = re.search(r"\d+ ok, (\d+) failed of \d+ test cases", data).group(1)

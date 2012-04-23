@@ -66,6 +66,14 @@
       <key>comment</key>
       <string>aborted</string>
       <key>match</key>
+      <string>NO TESTS TO RUN.</string>
+      <key>name</key>
+      <string>test.aborted</string>
+    </dict>
+    <dict>
+      <key>comment</key>
+      <string>aborted</string>
+      <key>match</key>
       <string>ABORTED</string>
       <key>name</key>
       <string>test.aborted</string>
