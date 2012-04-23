@@ -1,22 +1,27 @@
-# SublimErl (Erlang Tests)
+# SublimErl (Erlang Tests & Code Completion)
 
 Overview
 --------
 
 SublimErl is a plugin for the text editor [Sublime Text 2](http://www.sublimetext.com/2). It allows you to:
 
+* Benefit from **Code Completion** ( all Erlang libs + your current project )
 * Run **Eunit** tests ( all tests from file / single test )
 * Run **Common Tests** ( single file )
 * Run **Dialyzer** tests ( single file )
 
 All within your test editor.
 
-Screenshot
-----------
+Screenshots
+-----------
 
-Here's a screenshot of SublimErl running an Eunit specific test in file.
+Here's a screenshot of SublimErl's **Code Completion** feature:
 
-![SublimErl screenshot](http://farm8.staticflickr.com/7065/7081124859_7fd1894549_b.jpg)
+![SublimErl screenshot](http://www.ostinelli.net/_out_images/code_completion.gif)
+
+Here's a screenshot of SublimErl **running an Eunit specific test** in file.
+
+![SublimErl screenshot](http://www.ostinelli.net/_out_images/running_test.jpeg)
 
 Installation
 ------------
@@ -43,6 +48,7 @@ Head to the [downloads](https://github.com/ostinelli/SublimErl/downloads) sectio
 Usage
 -----
 
+* **Code Completion**: Just type and select available options
 * Run **single Eunit test**: position your cursor anywhere **within** your test function and hit `Command-Shift-F8`
 * Run **all Eunit test** in file: position your cursor **outside** any test function and hit `Command-Shift-F8`
 * Run **all Common Tests** in file: view the test file and hit `Command-Shift-F8`
