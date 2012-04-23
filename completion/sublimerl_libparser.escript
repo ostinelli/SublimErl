@@ -34,8 +34,8 @@
 main([Basename]) ->
 	gen_completion_files(Basename);
 
-main([SearchPath, Basename]) ->
-	gen_completion_files(SearchPath, Basename);
+main([Basename, SearchPath]) ->
+	gen_completion_files(Basename, SearchPath);
 
 main(_) ->
 	halt(1).
@@ -43,7 +43,7 @@ main(_) ->
 % generate files
 gen_completion_files(Basename) ->
 	gen_completion_files(Basename, code:lib_dir()).
-gen_completion_files(SearchPath, Basename) ->
+gen_completion_files(Basename, SearchPath) ->
 	% loop all beam files
 	F = fun(FilePath, {AccModules, AccDisasm}) ->
 		% get exports
@@ -58,6 +58,8 @@ gen_completion_files(SearchPath, Basename) ->
 	end,
 	{ModuleCompletions, DisasmExports} = filelib:fold_files(SearchPath, ".*\\.beam", true, F, {[], []}),
 	% write to .lib-disasm file
+	io:format("HERE: ~p", [Basename ++ ".disasm"]),
+
 	{ok, DisasmFile} = file:open(Basename ++ ".disasm", [write, raw]),
 	DisasmFileContents = string:join(DisasmExports, ",\n"),
 	file:write(DisasmFile, "{\n" ++ DisasmFileContents ++ "\n}"),
@@ -94,6 +96,6 @@ gen_params_snippet(FunctionName, Count) ->
 	% build snippet
 	params_snippet(FunctionName, Params, Count).
 params_snippet(FunctionName, Params, Count) ->
-	"('" ++ FunctionName ++ "/" ++ integer_to_list(Count) ++ "', '" ++ FunctionName ++ Params ++ " ->\\n\\t$" ++ integer_to_list(Count + 1) ++ "')".
+	"('" ++ FunctionName ++ "/" ++ integer_to_list(Count) ++ "', '" ++ FunctionName ++ Params ++ " $" ++ integer_to_list(Count + 1) ++ "')".
 
 

@@ -58,13 +58,11 @@ class SublimErlCompletionsListener(sublime_plugin.EventListener):
 		class SublimErlThread(threading.Thread):
 			def run(self):
 				# change cwd - TODO: check that this doesn't interfere with other plugins
-				current_working_directory = os.getcwd()
-				os.chdir(launcher.plugin_path())
+				completion_path = os.path.join(launcher.plugin_path(), "completion")
+				os.chdir(completion_path)
 				# run escript to get all erlang lib exports
 				escript_command = "sublimerl_libparser.escript \"Erlang-Libs\""
 				retcode, data = launcher.execute_os_command('%s %s' % (launcher.escript_path, escript_command))
-				# switch back to original cwd
-				os.chdir(current_working_directory)
 				# set new status
 				global SUBLIMERL_COMPLETIONS_ERLANG_LIBS_REBUILD
 				SUBLIMERL_COMPLETIONS_ERLANG_LIBS_REBUILD = True
@@ -77,7 +75,7 @@ class SublimErlCompletionsListener(sublime_plugin.EventListener):
 		plugin_path = self.launcher.plugin_path()
 		class SublimErlThread(threading.Thread):
 			def run(self):
-				disasm_filepath = os.path.join(plugin_path, "Erlang-Libs.disasm")
+				disasm_filepath = os.path.join(plugin_path, "completion", "Erlang-Libs.disasm")
 				if os.path.exists(disasm_filepath):
 					# load file
 					f = open(disasm_filepath, 'r')
@@ -94,13 +92,11 @@ class SublimErlCompletionsListener(sublime_plugin.EventListener):
 		class SublimErlThread(threading.Thread):
 			def run(self):
 				# change cwd - TODO: check that this doesn't interfere with other plugins
-				current_working_directory = os.getcwd()
-				os.chdir(launcher.plugin_path())
+				completion_path = os.path.join(launcher.plugin_path(), "completion")
+				os.chdir(completion_path)
 				# run escript to get all erlang lib exports
-				escript_command = "sublimerl_libparser.escript \"%s/ebin\" \"Current-Project\"" % launcher.get_project_root()
+				escript_command = "sublimerl_libparser.escript \"Current-Project\" \"%s/ebin\"" % launcher.get_project_root()
 				retcode, data = launcher.execute_os_command('%s %s' % (launcher.escript_path, escript_command))
-				# switch back to original cwd
-				os.chdir(current_working_directory)
 				# set new status
 				global SUBLIMERL_COMPLETIONS_PROJECT_REBUILD
 				SUBLIMERL_COMPLETIONS_PROJECT_REBUILD = True
@@ -113,7 +109,7 @@ class SublimErlCompletionsListener(sublime_plugin.EventListener):
 		plugin_path = self.launcher.plugin_path()
 		class SublimErlThread(threading.Thread):
 			def run(self):
-				disasm_filepath = os.path.join(plugin_path, "Current-Project.disasm")
+				disasm_filepath = os.path.join(plugin_path, "completion", "Current-Project.disasm")
 				if os.path.exists(disasm_filepath):
 					# load file
 					f = open(disasm_filepath, 'r')
