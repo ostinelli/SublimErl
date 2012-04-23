@@ -201,7 +201,7 @@ class SublimErlLauncher():
 			SUBLIMERL_LAST_ROOT = os.path.abspath(otp_project_root)
 
 		# TODO: SWITCH THIS set current directory to root - needed by rebar
-		# os.chdir(SUBLIMERL_LAST_ROOT)
+		os.chdir(SUBLIMERL_LAST_ROOT)
 
 	def get_otp_project_root(self, current_dir):
 		# if compliant, return
