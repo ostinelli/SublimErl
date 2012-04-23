@@ -55,7 +55,7 @@ class SublimErlCompletionsListener(sublime_plugin.EventListener):
 				current_working_directory = os.getcwd()
 				os.chdir(launcher.plugin_path())
 				# run escript to get all erlang lib exports
-				escript_command = "sublimerl_libparser.escript \"Erlang.lib-desasm\""
+				escript_command = "sublimerl_libparser.escript \"Erlang-Libs\""
 				retcode, data = launcher.execute_os_command('%s %s' % (launcher.escript_path, escript_command))
 				# switch back to original cwd
 				os.chdir(current_working_directory)
@@ -71,10 +71,10 @@ class SublimErlCompletionsListener(sublime_plugin.EventListener):
 		plugin_path = self.launcher.plugin_path()
 		class SublimErlThread(threading.Thread):
 			def run(self):
-				disasm_filepath = os.path.join(plugin_path, "Erlang.lib-desasm")
+				disasm_filepath = os.path.join(plugin_path, "Erlang-Libs.disasm")
 				if os.path.exists(disasm_filepath):
 					# load file
-					f = open(os.path.join(plugin_path, "Erlang.lib-desasm"), 'r')
+					f = open(disasm_filepath, 'r')
 					completions = f.read()
 					f.close()
 					# set

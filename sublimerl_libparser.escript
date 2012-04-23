@@ -3,30 +3,39 @@
 %%! -smp enable debug verbose
 -mode(compile).
 
-main([SettingsFileName]) ->
-	gen_settings_file(SettingsFileName);
+main([Basename]) ->
+	gen_settings_file(Basename);
 
 main(_) ->
 	halt(1).
 
 % "SublimErl.sublime-settings"
-gen_settings_file(SettingsFileName) ->
-	gen_settings_file(code:lib_dir(), SettingsFileName).
-gen_settings_file(SearchPath, SettingsFileName) ->
+gen_settings_file(Basename) ->
+	gen_settings_file(code:lib_dir(), Basename).
+gen_settings_file(SearchPath, Basename) ->
 	% loop all beam files
-	F = fun(FilePath, Acc) ->
+	F = fun(FilePath, {AccModules, AccDisasm}) ->
 		% get exports
 		{beam_file, ModuleName, Exported0, _, _, _} = beam_disasm:file(FilePath),
 		Exports = [{Name, Arity} || {Name, Arity, _} <- Exported0],
 		% add to list
-		[io_lib:format("'~s': [~s]", [atom_to_list(ModuleName), gen_snippets(Exports)]) | Acc]
+		ModuleNameStr = atom_to_list(ModuleName),
+		{
+			[io_lib:format("{ \"trigger\": \"~s\", \"contents\": \"~s\" }", [ModuleNameStr, ModuleNameStr]) | AccModules],
+			[io_lib:format("'~s': [~s]", [ModuleNameStr, gen_snippets(Exports)]) | AccDisasm]
+		}
 	end,
-	ModuleExports = filelib:fold_files(SearchPath, ".*\\.beam", true, F, []),
-	FileContents = string:join(ModuleExports, ",\n"),
-	% write to file
-	{ok, ResultFile} = file:open(SettingsFileName, [write, raw]),
-	file:write(ResultFile, "{\n" ++ FileContents ++ "\n}"),
-	file:close(ResultFile).
+	{ModuleCompletions, DisasmExports} = filelib:fold_files(SearchPath, ".*\\.beam", true, F, {[], []}),
+	% write to .lib-disasm file
+	{ok, DisasmFile} = file:open(Basename ++ ".disasm", [write, raw]),
+	DisasmFileContents = string:join(DisasmExports, ",\n"),
+	file:write(DisasmFile, "{\n" ++ DisasmFileContents ++ "\n}"),
+	file:close(DisasmFile),
+	% write to .sublime-completions file
+	{ok, CompletionsFile} = file:open(Basename ++ ".sublime-completions", [write, raw]),
+	CompletionsFileContents = string:join(ModuleCompletions, ",\n"),
+	file:write(CompletionsFile, "{ \"scope\": \"source.erlang\", \"completions\": [ \"erlang\", \n" ++ CompletionsFileContents ++ "\n]}"),
+	file:close(CompletionsFile).
 
 % generate all snippets for the exports
 gen_snippets(Exports) ->
