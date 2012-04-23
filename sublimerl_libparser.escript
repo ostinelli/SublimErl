@@ -22,10 +22,10 @@ gen_settings_file(SearchPath, SettingsFileName) ->
 		[io_lib:format("'~s': [~s]", [atom_to_list(ModuleName), gen_snippets(Exports)]) | Acc]
 	end,
 	ModuleExports = filelib:fold_files(SearchPath, ".*\\.beam", true, F, []),
-	FileContents = string:join(ModuleExports, ", "),
+	FileContents = string:join(ModuleExports, ",\n"),
 	% write to file
 	{ok, ResultFile} = file:open(SettingsFileName, [write, raw]),
-	file:write(ResultFile, "{\n\"erlang_disasm\": \"{ " ++ FileContents ++ " }\"\n}"),
+	file:write(ResultFile, "{\n" ++ FileContents ++ "\n}"),
 	file:close(ResultFile).
 
 % generate all snippets for the exports
@@ -49,6 +49,6 @@ gen_params_snippet(FunctionName, Count) ->
 	% build snippet
 	params_snippet(FunctionName, Params, Count).
 params_snippet(FunctionName, Params, Count) ->
-	"('" ++ FunctionName ++ "/" ++ integer_to_list(Count) ++ "', '" ++ FunctionName ++ Params ++ " ->\\\\n\\\\t$" ++ integer_to_list(Count + 1) ++ "')".
+	"('" ++ FunctionName ++ "/" ++ integer_to_list(Count) ++ "', '" ++ FunctionName ++ Params ++ " ->\\n\\t$" ++ integer_to_list(Count + 1) ++ "')".
 
 

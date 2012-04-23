@@ -1,6 +1,5 @@
 *.pyc
 *.cache
-Erlang.lib-exports
 
 # OSX
 .DS_Store

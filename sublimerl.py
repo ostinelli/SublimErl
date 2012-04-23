@@ -91,7 +91,7 @@ class SublimErlLauncher():
 
 	def plugin_path(self):
 		return os.path.join(sublime.packages_path(), 'SublimErl')
-		
+
 	def setup_launcher(self):
 		# init test
 		global SUBLIMERL_VERSION
@@ -542,17 +542,3 @@ class SublimErlCtResultsCommand(SublimErlTextCommand):
 	def show_contextual_menu(self):
 		return SUBLIMERL_LAST_ROOT != None
 
-# listener on save
-class SublimErlListener(sublime_plugin.EventListener):
-	def on_post_save(self, view):
-		# ensure context matches
-		caret = view.sel()[0].a
-		if not ('source.erlang' in view.scope_name(caret) and sublime.platform() != 'windows'): return
-		# init
-		launcher = SublimErlLauncher(view, show_log=False, new=False)
-		if launcher.available == False: return
-		# compile saved file
-		class SublimErlThread(threading.Thread):
-			def run(self):
-				launcher.compile_source()
-		SublimErlThread().start()
