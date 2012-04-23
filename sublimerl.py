@@ -1,5 +1,5 @@
 # ==========================================================================================================
-# SublimErl - A Sublime Text 2 Plugin for Erlang Integrated Testing
+# SublimErl - A Sublime Text 2 Plugin for Erlang Integrated Testing & Code Completion
 # 
 # Copyright (C) 2012, Roberto Ostinelli <roberto@ostinelli.net>.
 # All rights reserved.
@@ -10,11 +10,11 @@
 # that the following conditions are met:
 #
 #  * Redistributions of source code must retain the above copyright notice, this list of conditions and the
-#	 following disclaimer.
+#        following disclaimer.
 #  * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and
-#	 the following disclaimer in the documentation and/or other materials provided with the distribution.
+#        the following disclaimer in the documentation and/or other materials provided with the distribution.
 #  * Neither the name of the authors nor the names of its contributors may be used to endorse or promote
-#	 products derived from this software without specific prior written permission.
+#        products derived from this software without specific prior written permission.
 #
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
 # WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
@@ -34,6 +34,17 @@ SUBLIMERL_VERSION = '0.1'
 SUBLIMERL_LAST_TEST = None
 SUBLIMERL_LAST_TEST_TYPE = None
 SUBLIMERL_LAST_ROOT = None
+
+# cwd decorator
+def temporarily_set_cwd_to_project_root(fn):
+	def wrapped(*args, **kwargs):
+		current_working_directory = os.getcwd()
+		global SUBLIMERL_LAST_ROOT
+		os.chdir(SUBLIMERL_LAST_ROOT)
+		output = fn(*args, **kwargs)
+		os.chdir(current_working_directory)
+		return output
+	return wrapped
 
 
 # core launcher & panel
@@ -201,7 +212,7 @@ class SublimErlLauncher():
 			SUBLIMERL_LAST_ROOT = os.path.abspath(otp_project_root)
 
 		# TODO: SWITCH THIS set current directory to root - needed by rebar
-		os.chdir(SUBLIMERL_LAST_ROOT)
+		# os.chdir(SUBLIMERL_LAST_ROOT)
 
 	def get_otp_project_root(self, current_dir):
 		# if compliant, return
@@ -394,6 +405,7 @@ class SublimErlTestRunner(SublimErlLauncher):
 			# compile all source code and test module
 			self.compile_eunit_run_suite(module_tests_name)
 
+	@temporarily_set_cwd_to_project_root
 	def compile_eunit_no_run(self):
 		# call rebar to compile -  HACK: passing in a non-existing suite forces rebar to not run the test suite
 		retcode, data = self.execute_os_command('%s eunit suite=sublimerl_unexisting_test' % self.rebar_path, True)
@@ -403,6 +415,7 @@ class SublimErlTestRunner(SublimErlLauncher):
 		# interpret
 		self.interpret_eunit_test_results(retcode, data)
 
+	@temporarily_set_cwd_to_project_root
 	def run_single_eunit_test(self, module_tests_name, function_name):
 		# build & run erl command
 		mod_function = "%s:%s" % (module_tests_name, function_name)
@@ -411,6 +424,7 @@ class SublimErlTestRunner(SublimErlLauncher):
 		# interpret
 		self.interpret_eunit_test_results(retcode, data)
 
+	@temporarily_set_cwd_to_project_root
 	def compile_eunit_run_suite(self, suite):
 		retcode, data = self.execute_os_command('%s eunit suite=%s' % (self.rebar_path, suite), False)
 		# interpret
@@ -435,6 +449,7 @@ class SublimErlTestRunner(SublimErlLauncher):
 		else:
 			self.log("\n=> TEST(S) FAILED.\n")
 
+	@temporarily_set_cwd_to_project_root
 	def ct_test(self, module_tests_name):
 		# run CT for suite
 		self.log("Running tests of Common Tests SUITE \"%s_SUITE.erl\".\n\n" % module_tests_name)
@@ -460,6 +475,7 @@ class SublimErlTestRunner(SublimErlLauncher):
 		else:
 			self.log("\n=> TEST(S) FAILED.\n")
 
+	@temporarily_set_cwd_to_project_root
 	def dialyzer_test(self, module_tests_name):
 		# run dialyzer for file
 		self.log("Running Dialyzer tests for \"%s.erl\".\n\n" % module_tests_name)
