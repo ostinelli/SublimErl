@@ -65,8 +65,8 @@ class SublimErlLauncher():
 		if self.show_log == True:
 			self.panel = self.window.get_output_panel(self.panel_name)
 			# TODO: have this set as relative path
-			self.panel.settings().set("syntax", "Packages/SublimErl/SublimErl.hidden-tmLanguage")
-			self.panel.settings().set("color_scheme", "Packages/SublimErl/SublimErl.hidden-tmTheme")
+			self.panel.settings().set("syntax", "Packages/SublimErl/theme/SublimErl.hidden-tmLanguage")
+			self.panel.settings().set("color_scheme", "Packages/SublimErl/theme/SublimErl.hidden-tmTheme")
 
 	def update_panel(self):
 		if len(self.panel_buffer):
