@@ -49,7 +49,7 @@ Download and install the [Sublime Package Control](http://wbond.net/sublime_pack
 ##### 2. Git Clone
 Go to your Sublime Text 2 `Packages` directory:
 
-* OS X: `~/Library/Application Support/Sublime Text\ 2/Packages`
+* OS X: `~/Library/Application Support/Sublime Text 2/Packages`
 * Linux: `~/.Sublime Text 2/Packages/`
 
 and clone the repository using the command below:
