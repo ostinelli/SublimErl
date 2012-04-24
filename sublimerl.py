@@ -97,9 +97,6 @@ class SublimErlLauncher():
 		global SUBLIMERL_VERSION
 		self.log("Starting tests (SublimErl v%s).\n" % SUBLIMERL_VERSION)
 
-		# set environment
-		self.set_env()
-
 		if self.new == True:
 			# file saved?
 			if self.view.is_scratch():
@@ -120,35 +117,54 @@ class SublimErlLauncher():
 			self.log_error("This code does not seem to be part of an OTP compilant project.")
 			return
 
-		# rebar check
-		self.get_rebar_path()
-		if self.rebar_path == None:
-			self.log_error("Rebar cannot be found, please download and install from <https://github.com/basho/rebar>.")
-			return
+		# set environment
+		self.set_env()
 
-		# erl check
-		self.get_erl_path()
-		if self.erl_path == None:
-			self.log_error("Erlang binary (erl) cannot be found.")
-			return
-
-		# escript check
-		self.get_escript_path()
-		if self.escript_path == None:
-			self.log_error("Erlang binary (escript) cannot be found.")
-			return
-
-		# dialyzer check
-		self.get_dialyzer_path()
-		if self.dialyzer_path == None:
-			self.log_error("Erlang Dyalizer cannot be found.")
-			return
+		# paths check
+		if self.get_paths() == None: return
 
 		# ok we can use this launcher
 		self.available = True
 
+	def get_paths(self):
+		settings = sublime.load_settings('SublimErl.sublime-settings')
+
+		# rebar
+		self.rebar_path = settings.get('rebar_path', self.get_exe_path('rebar'))
+		if self.rebar_path == None or not os.path.exists(self.rebar_path):
+			self.log_error("Rebar cannot be found, please download and install from <https://github.com/basho/rebar>.")
+			return
+
+		# erl check
+		self.erl_path = settings.get('erl_path', self.get_exe_path('erl'))
+		if self.erl_path == None or not os.path.exists(self.erl_path):
+			self.log_error("Erlang binary (erl) cannot be found.")
+			return
+
+		# escript check
+		self.escript_path = settings.get('escript_path', self.get_exe_path('escript'))
+		if self.escript_path == None or not os.path.exists(self.escript_path):
+			self.log_error("Erlang binary (escript) cannot be found.")
+			return
+
+		# dialyzer check
+		self.dialyzer_path = settings.get('dialyzer_path', self.get_exe_path('dialyzer'))
+		if self.dialyzer_path == None or not os.path.exists(self.dialyzer_path):
+			self.log_error("Erlang Dyalizer cannot be found.")
+			return
+
+		return True
+
+	def get_exe_path(self, name):
+		retcode, data = self.execute_os_command('which %s' % name, block=True)
+		data = data.strip()
+		if retcode == 0 and len(data) > 0:
+			return data
+
 	def set_env(self):
 		self.env = os.environ.copy()
+		# add project root
+		self.env['PATH'] = "%s:%s" % (self.env['PATH'], SUBLIMERL_LAST_ROOT)
 		# TODO: enhance the finding of paths
 		if sublime.platform() == 'osx':
 			# get relevant file paths
@@ -219,30 +235,6 @@ class SublimErlLauncher():
 		
 	def is_otp_compliant_dir(self, directory_path):
 		return os.path.exists(os.path.join(directory_path, 'src'))
-
-	def get_rebar_path(self):
-		retcode, data = self.execute_os_command('which rebar', block=True)
-		data = data.strip()
-		if retcode == 0 and len(data) > 0:
-			self.rebar_path = data
-
-	def get_erl_path(self):
-		retcode, data = self.execute_os_command('which erl', block=True)
-		data = data.strip()
-		if retcode == 0 and len(data) > 0:
-			self.erl_path = data
-
-	def get_escript_path(self):
-		retcode, data = self.execute_os_command('which escript', block=True)
-		data = data.strip()
-		if retcode == 0 and len(data) > 0:
-			self.escript_path = data
-
-	def get_dialyzer_path(self):
-		retcode, data = self.execute_os_command('which dialyzer', block=True)
-		data = data.strip()
-		if retcode == 0 and len(data) > 0:
-			self.dialyzer_path = data
 
 	def execute_os_command(self, os_cmd, block=False):
 		p = subprocess.Popen(os_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, env=self.env)
