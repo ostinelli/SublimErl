@@ -46,6 +46,8 @@ SublimErl currently supports only on **OSX** and **Linux**. There are 3 ways to 
 ##### 1. Sublime Package Control
 Download and install the [Sublime Package Control](http://wbond.net/sublime_packages/package_control). This package controller allows you to easily manage your Sublime Text 2 plugins (installs / removals / upgrades).
 
+SublimErl's latest stable versions are pushed automatically to the package control. However, if you want the latest and greatest, you'll have to use one of the other following options.
+
 ##### 2. Git Clone
 Go to your Sublime Text 2 `Packages` directory:
 
