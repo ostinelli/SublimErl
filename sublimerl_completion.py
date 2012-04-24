@@ -61,7 +61,7 @@ class SublimErlCompletionsListener(sublime_plugin.EventListener):
 				completion_path = os.path.join(launcher.plugin_path(), "completion")
 				os.chdir(completion_path)
 				# run escript to get all erlang lib exports
-				escript_command = "sublimerl_libparser.escript \"Erlang-Libs\""
+				escript_command = "sublimerl_libparser.erl \"Erlang-Libs\""
 				retcode, data = launcher.execute_os_command('%s %s' % (launcher.escript_path, escript_command))
 				# set new status
 				global SUBLIMERL_COMPLETIONS_ERLANG_LIBS_REBUILD
@@ -95,7 +95,7 @@ class SublimErlCompletionsListener(sublime_plugin.EventListener):
 				completion_path = os.path.join(launcher.plugin_path(), "completion")
 				os.chdir(completion_path)
 				# run escript to get all erlang lib exports
-				escript_command = "sublimerl_libparser.escript \"Current-Project\" \"%s/ebin\"" % launcher.get_project_root()
+				escript_command = "sublimerl_libparser.erl \"Current-Project\" \"%s/ebin\"" % launcher.get_project_root()
 				retcode, data = launcher.execute_os_command('%s %s' % (launcher.escript_path, escript_command))
 				# set new status
 				global SUBLIMERL_COMPLETIONS_PROJECT_REBUILD
