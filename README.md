@@ -23,6 +23,22 @@ Here's a screenshot of SublimErl **running an Eunit specific test** in file.
 
 ![SublimErl screenshot](http://www.ostinelli.net/_out_images/running_test.jpeg)
 
+Usage
+-----
+
+* **Code Completion**: Just type and select available options
+* Run **single Eunit test**: position your cursor anywhere **within** your test function and hit `Command-Shift-F8`
+* Run **all Eunit test** in file: position your cursor **outside** any test function and hit `Command-Shift-F8`
+* Run **all Common Tests** in file: view the test file and hit `Command-Shift-F8`
+* Run **Dialyzer** on file: view the file and hit `Command-Shift-F9`
+* Re-Run the **previous test**: hit `Command-F8` ( you do not need to be viewing the test to launch it )
+* View **Common Tests results** in browser: hit `Command-Option-F8` (OSX) | `Command-Alt-F8` (Linux/Win)
+
+A brief introduction video can be seen [here](http://www.youtube.com/watch?v=T0rD0CQM4Yg):
+
+[![SublimErl screenshot](http://farm8.staticflickr.com/7263/6935974110_c07c6a6afe_b.jpg)](http://www.youtube.com/watch?v=T0rD0CQM4Yg)
+
+
 Installation
 ------------
 SublimErl currently supports only on **OSX** and **Linux**. There are 3 ways to install it.
@@ -45,20 +61,10 @@ git clone https://github.com/ostinelli/SublimErl.git
 ##### 3. File Download
 Head to the [downloads](https://github.com/ostinelli/SublimErl/downloads) section and unzipping the downloaded file into the Sublime Text 2 `Packages` directory.
 
-Usage
------
+Configuration
+-------------
 
-* **Code Completion**: Just type and select available options
-* Run **single Eunit test**: position your cursor anywhere **within** your test function and hit `Command-Shift-F8`
-* Run **all Eunit test** in file: position your cursor **outside** any test function and hit `Command-Shift-F8`
-* Run **all Common Tests** in file: view the test file and hit `Command-Shift-F8`
-* Run **Dialyzer** on file: view the file and hit `Command-Shift-F9`
-* Re-Run the **previous test**: hit `Command-F8` ( you do not need to be viewing the test to launch it )
-* View **Common Tests results** in browser: hit `Command-Option-F8` (OSX) | `Command-Alt-F8` (Linux/Win)
-
-A brief introduction video can be seen [here](http://www.youtube.com/watch?v=T0rD0CQM4Yg):
-
-[![SublimErl screenshot](http://farm8.staticflickr.com/7263/6935974110_c07c6a6afe_b.jpg)](http://www.youtube.com/watch?v=T0rD0CQM4Yg)
+SublimErl needs and will try to detect the paths of the following executables: **rebar**, **erl**, **escript** and **dialyzer**. If it doesn't succeed to find those, or if you prefer to manually configure these path, you can set them in the `SublimErl.sublime-settings` file, located in the `SublimErl` plugin directory.
 
 Dependencies
 ------------
