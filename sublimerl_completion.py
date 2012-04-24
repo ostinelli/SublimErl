@@ -31,47 +31,30 @@ import os, threading
 from sublimerl import SublimErlLauncher
 
 # globals
-SUBLIMERL_COMPLETIONS_ERLANG_LIBS = None
-SUBLIMERL_COMPLETIONS_ERLANG_LIBS_REBUILD = False
-SUBLIMERL_COMPLETIONS_PROJECT = None
-SUBLIMERL_COMPLETIONS_PROJECT_REBUILD = False
+SUBLIMERL_COMPLETIONS_ERLANG_LIBS = {}
+SUBLIMERL_COMPLETIONS_ERLANG_LIBS_REBUILT = False
+SUBLIMERL_COMPLETIONS_PROJECT = {}
+SUBLIMERL_COMPLETIONS_PROJECT_REBUILD_IN_PROGRESS = False
 
 
 # listener
 class SublimErlCompletionsListener(sublime_plugin.EventListener):
 
 	def get_available_completions(self):
-		global SUBLIMERL_COMPLETIONS_ERLANG_LIBS, SUBLIMERL_COMPLETIONS_ERLANG_LIBS_REBUILD
-		global SUBLIMERL_COMPLETIONS_PROJECT, SUBLIMERL_COMPLETIONS_PROJECT_REBUILD
-		# can we load a previously generated file?
-		if SUBLIMERL_COMPLETIONS_ERLANG_LIBS == None: self.load_erlang_lib_completions()
-		# start rebuilding, if not yet done in this session
-		if SUBLIMERL_COMPLETIONS_ERLANG_LIBS_REBUILD == False: self.generate_erlang_lib_completions()
-		# try loading cuyrrent project files
-		if SUBLIMERL_COMPLETIONS_PROJECT == None: self.load_project_completions()
-		# start rebuilding, if not yet done in this session
-		if SUBLIMERL_COMPLETIONS_PROJECT_REBUILD == False: self.generate_project_completions()
+		global SUBLIMERL_COMPLETIONS_ERLANG_LIBS, SUBLIMERL_COMPLETIONS_ERLANG_LIBS_REBUILT
+		global SUBLIMERL_COMPLETIONS_PROJECT
 
-	def generate_erlang_lib_completions(self):
-		launcher = self.launcher
-		load_erlang_lib_completions = self.load_erlang_lib_completions
-		class SublimErlThread(threading.Thread):
-			def run(self):
-				# set new status
-				global SUBLIMERL_COMPLETIONS_ERLANG_LIBS_REBUILD
-				SUBLIMERL_COMPLETIONS_ERLANG_LIBS_REBUILD = True
-				# change cwd - TODO: check that this doesn't interfere with other plugins
-				completion_path = os.path.join(launcher.plugin_path(), "completion")
-				os.chdir(completion_path)
-				# run escript to get all erlang lib exports
-				escript_command = "sublimerl_libparser.erl \"Erlang-Libs\""
-				retcode, data = launcher.execute_os_command('%s %s' % (launcher.escript_path, escript_command))
-				# trigger event to reload completions
-				sublime.set_timeout(load_erlang_lib_completions, 0)
-		SublimErlThread().start()
+		# load erlang libs
+		if SUBLIMERL_COMPLETIONS_ERLANG_LIBS == {}: self.load_erlang_lib_completions()
+		# start rebuilding: only done once per sublimerl session
+		# [i.e. needs sublime text restart to regenerate erlang completions]
+		if SUBLIMERL_COMPLETIONS_ERLANG_LIBS_REBUILT == False: self.generate_erlang_lib_completions()
+
+		# generate & load project files
+		self.generate_project_completions()
 
 	def load_erlang_lib_completions(self):
-		# load completetions
+		# load completetions from file
 		plugin_path = self.launcher.plugin_path()
 		class SublimErlThread(threading.Thread):
 			def run(self):
@@ -86,20 +69,44 @@ class SublimErlCompletionsListener(sublime_plugin.EventListener):
 					SUBLIMERL_COMPLETIONS_ERLANG_LIBS = eval(completions)
 		SublimErlThread().start()
 
+	def generate_erlang_lib_completions(self):
+		launcher = self.launcher
+		load_erlang_lib_completions = self.load_erlang_lib_completions
+		class SublimErlThread(threading.Thread):
+			def run(self):
+				# set new status
+				global SUBLIMERL_COMPLETIONS_ERLANG_LIBS_REBUILT
+				SUBLIMERL_COMPLETIONS_ERLANG_LIBS_REBUILT = True
+				# change cwd - TODO: check that this doesn't interfere with other plugins
+				completion_path = os.path.join(launcher.plugin_path(), "completion")
+				os.chdir(completion_path)
+				# run escript to get all erlang lib exports
+				escript_command = "sublimerl_libparser.erl \"Erlang-Libs\""
+				retcode, data = launcher.execute_os_command('%s %s' % (launcher.escript_path, escript_command))
+				# trigger event to reload completions
+				sublime.set_timeout(load_erlang_lib_completions, 0)
+		SublimErlThread().start()
+
 	def generate_project_completions(self):
+		# check lock
+		global SUBLIMERL_COMPLETIONS_PROJECT_REBUILD_IN_PROGRESS
+		if SUBLIMERL_COMPLETIONS_PROJECT_REBUILD_IN_PROGRESS == True: return
+		# rebuild
 		launcher = self.launcher
 		load_project_completions = self.load_project_completions
 		class SublimErlThread(threading.Thread):
 			def run(self):
-				# set new status
-				global SUBLIMERL_COMPLETIONS_PROJECT_REBUILD
-				SUBLIMERL_COMPLETIONS_PROJECT_REBUILD = True
+				# set lock
+				global SUBLIMERL_COMPLETIONS_PROJECT_REBUILD_IN_PROGRESS
+				SUBLIMERL_COMPLETIONS_PROJECT_REBUILD_IN_PROGRESS = True
 				# change cwd - TODO: check that this doesn't interfere with other plugins
 				completion_path = os.path.join(launcher.plugin_path(), "completion")
 				os.chdir(completion_path)
 				# run escript to get all erlang lib exports
 				escript_command = "sublimerl_libparser.erl \"Current-Project\" \"%s/ebin\"" % launcher.get_project_root()
 				retcode, data = launcher.execute_os_command('%s %s' % (launcher.escript_path, escript_command))
+				# release lock
+				SUBLIMERL_COMPLETIONS_PROJECT_REBUILD_IN_PROGRESS = False
 				# trigger event to reload completions
 				sublime.set_timeout(load_project_completions, 0)
 		SublimErlThread().start()
@@ -164,11 +171,8 @@ class SublimErlCompletionsListener(sublime_plugin.EventListener):
 		function_name = view.substr(view.word(pt))
 		if function_name.strip() == ':': return
 
-		# check for available completions
-		global SUBLIMERL_COMPLETIONS_ERLANG_LIBS
-		if SUBLIMERL_COMPLETIONS_ERLANG_LIBS == None: return
-
-		# check for existance		
+		# check for existance
+		global SUBLIMERL_COMPLETIONS_ERLANG_LIBS, SUBLIMERL_COMPLETIONS_PROJECT
 		if SUBLIMERL_COMPLETIONS_ERLANG_LIBS.has_key(function_name): available_completions = SUBLIMERL_COMPLETIONS_ERLANG_LIBS[function_name]
 		elif SUBLIMERL_COMPLETIONS_PROJECT.has_key(function_name): available_completions = SUBLIMERL_COMPLETIONS_PROJECT[function_name]
 		else: return

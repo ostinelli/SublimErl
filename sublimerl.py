@@ -206,15 +206,15 @@ class SublimErlLauncher():
 
 	def set_cwd_to_otp_project_root(self):
 		global SUBLIMERL_LAST_ROOT
-		if self.new == True or SUBLIMERL_LAST_ROOT == None:
-			# get otp directory
-			current_file_path = os.path.dirname(self.view.file_name())
-			otp_project_root = self.get_otp_project_root(current_file_path)
 
-			if otp_project_root == None: return False
+		# get otp directory
+		current_file_path = os.path.dirname(self.view.file_name())
+		otp_project_root = self.get_otp_project_root(current_file_path)
 
-			# save
-			SUBLIMERL_LAST_ROOT = os.path.abspath(otp_project_root)
+		if otp_project_root == None: return False
+
+		# save
+		SUBLIMERL_LAST_ROOT = os.path.abspath(otp_project_root)
 
 		# TODO: SWITCH THIS set current directory to root - needed by rebar
 		os.chdir(SUBLIMERL_LAST_ROOT)
