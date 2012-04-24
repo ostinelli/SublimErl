@@ -58,8 +58,6 @@ gen_completion_files(Basename, SearchPath) ->
 	end,
 	{ModuleCompletions, DisasmExports} = filelib:fold_files(SearchPath, ".*\\.beam", true, F, {[], []}),
 	% write to .lib-disasm file
-	io:format("HERE: ~p", [Basename ++ ".disasm"]),
-
 	{ok, DisasmFile} = file:open(Basename ++ ".disasm", [write, raw]),
 	DisasmFileContents = string:join(DisasmExports, ",\n"),
 	file:write(DisasmFile, "{\n" ++ DisasmFileContents ++ "\n}"),
