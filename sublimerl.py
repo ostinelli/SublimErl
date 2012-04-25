@@ -206,12 +206,13 @@ class SublimErlLauncher():
 
 	def set_cwd_to_otp_project_root(self):
 		global SUBLIMERL_LAST_ROOT
-
 		# get otp directory
 		current_file_path = os.path.dirname(self.view.file_name())
 		otp_project_root = self.get_otp_project_root(current_file_path)
 
-		if otp_project_root == None: return False
+		if otp_project_root == None:
+			SUBLIMERL_LAST_ROOT = None
+			return False
 
 		# save
 		SUBLIMERL_LAST_ROOT = os.path.abspath(otp_project_root)
@@ -219,22 +220,22 @@ class SublimErlLauncher():
 		# TODO: SWITCH THIS set current directory to root - needed by rebar
 		os.chdir(SUBLIMERL_LAST_ROOT)
 
-	def get_otp_project_root(self, current_dir):
-		# if compliant, return
-		if self.is_otp_compliant_dir(current_dir) == True: return current_dir
-		# if went up to root, stop and return False
+	def get_otp_project_root(self, current_dir, project_root_candidate=None):
+		# if rebar.config exists, stop walking up
+		if os.path.exists(os.path.join(current_dir, 'rebar.config')): return current_dir
+		# if a src directory exists, save as potential candidate
+		if os.path.exists(os.path.join(current_dir, 'src')): project_root_candidate = current_dir
+		# keep walking up until root or until rebar.config
 		current_dir_split = current_dir.split(os.sep)
-		if len(current_dir_split) < 2: return
+		# if went up to root, stop and return current candidate
+		if len(current_dir_split) < 2: return project_root_candidate
 		# walk up directory
 		current_dir_split.pop()
-		return self.get_otp_project_root(os.sep.join(current_dir_split))
+		return self.get_otp_project_root(os.sep.join(current_dir_split), project_root_candidate)
 
 	def get_project_root(self):
 		global SUBLIMERL_LAST_ROOT
 		return SUBLIMERL_LAST_ROOT
-		
-	def is_otp_compliant_dir(self, directory_path):
-		return os.path.exists(os.path.join(directory_path, 'src'))
 
 	def execute_os_command(self, os_cmd, block=False):
 		p = subprocess.Popen(os_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, env=self.env)
