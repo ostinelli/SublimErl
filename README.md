@@ -90,4 +90,19 @@ TL;DR: it basically means to organize your project structure using:
    |-- src
        |-- myproject.app.src
    |-- test
+   |-- ...
+```
+
+or, for example, a more complex project structure defined in rebar.conf:
+
+```
+-- myproject
+   rebar.config
+   |-- apps
+       |-- app1
+       |-- app2
+   |-- deps
+       |-- dep1
+       |-- dep2
+   |-- ...
 ```
