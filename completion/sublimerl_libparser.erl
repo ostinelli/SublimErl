@@ -45,24 +45,32 @@ gen_completion_files(Basename) ->
 	gen_completion_files(Basename, code:lib_dir()).
 gen_completion_files(Basename, SearchPath) ->
 	% loop all beam files
-	F = fun(FilePath, {AccModules, AccDisasm} = Acc) ->
-		case (string:str(FilePath, ".eunit") =:= 0) andalso (string:str(FilePath, "test") =:= 0) of
-			true ->
-				% not a eunit nor a test directory
-				% get exports
+	F = fun(FilePath, {AccModules, AccDisasm, AddedModules} = Acc) ->
+		case lists:last(string:tokens(filename:dirname(FilePath), "/")) of
+			"ebin" ->
+				% file is in a ebin directory, disasm
 				{beam_file, ModuleName, Exported0, _, _, _} = beam_disasm:file(FilePath),
-				Exports = [{Name, Arity} || {Name, Arity, _} <- Exported0],
-				% add to list
-				ModuleNameStr = atom_to_list(ModuleName),
-				{
-					[io_lib:format("{ \"trigger\": \"~s\", \"contents\": \"~s\" }", [ModuleNameStr, ModuleNameStr]) | AccModules],
-					[io_lib:format("'~s': [~s]", [ModuleNameStr, gen_snippets(Exports)]) | AccDisasm]
-				};
+				case lists:member(ModuleName, AddedModules) of
+					false ->
+						% module not yet included, get exports
+						Exports = [{Name, Arity} || {Name, Arity, _} <- Exported0],
+						% add to list
+						ModuleNameStr = atom_to_list(ModuleName),
+						{
+							[io_lib:format("{ \"trigger\": \"~s\", \"contents\": \"~s\" }", [ModuleNameStr, ModuleNameStr]) | AccModules],
+							[io_lib:format("'~s': [~s]", [ModuleNameStr, gen_snippets(Exports)]) | AccDisasm],
+							[ModuleName| AddedModules]
+						};
+					_ ->
+						% module has already been included, ignore
+						Acc
+				end;
 			_ ->
+				% file is not in a ebin directory, ignore
 				Acc
 		end
 	end,
-	{ModuleCompletions, DisasmExports} = filelib:fold_files(SearchPath, ".*\\.beam", true, F, {[], []}),
+	{ModuleCompletions, DisasmExports, _} = filelib:fold_files(SearchPath, ".*\\.beam", true, F, {[], [], []}),
 	% write to .lib-disasm file
 	{ok, DisasmFile} = file:open(Basename ++ ".disasm", [write, raw]),
 	DisasmFileContents = string:join(DisasmExports, ",\n"),
