@@ -42,14 +42,11 @@ class SublimErlCompletionsListener(sublime_plugin.EventListener):
 
 	def get_available_completions(self):
 		global SUBLIMERL_COMPLETIONS_ERLANG_LIBS, SUBLIMERL_COMPLETIONS_ERLANG_LIBS_REBUILT
-		global SUBLIMERL_COMPLETIONS_PROJECT
-
-		# load erlang libs
+		# load current erlang libs
 		if SUBLIMERL_COMPLETIONS_ERLANG_LIBS == {}: self.load_erlang_lib_completions()
 		# start rebuilding: only done once per sublimerl session
 		# [i.e. needs sublime text restart to regenerate erlang completions]
 		if SUBLIMERL_COMPLETIONS_ERLANG_LIBS_REBUILT == False: self.generate_erlang_lib_completions()
-
 		# generate & load project files
 		self.generate_project_completions()
 
@@ -82,7 +79,7 @@ class SublimErlCompletionsListener(sublime_plugin.EventListener):
 				os.chdir(completion_path)
 				# run escript to get all erlang lib exports
 				escript_command = "sublimerl_libparser.erl \"Erlang-Libs\""
-				retcode, data = launcher.execute_os_command('%s %s' % (launcher.escript_path, escript_command))
+				retcode, data = launcher.execute_os_command('%s %s' % (launcher.escript_path, escript_command), block=True)
 				# trigger event to reload completions
 				sublime.set_timeout(load_erlang_lib_completions, 0)
 		SublimErlThread().start()
@@ -104,7 +101,7 @@ class SublimErlCompletionsListener(sublime_plugin.EventListener):
 				os.chdir(completion_path)
 				# run escript to get all erlang lib exports
 				escript_command = "sublimerl_libparser.erl \"Current-Project\" \"%s\"" % launcher.get_project_root()
-				retcode, data = launcher.execute_os_command('%s %s' % (launcher.escript_path, escript_command))
+				retcode, data = launcher.execute_os_command('%s %s' % (launcher.escript_path, escript_command), block=True)
 				# release lock
 				SUBLIMERL_COMPLETIONS_PROJECT_REBUILD_IN_PROGRESS = False
 				# trigger event to reload completions

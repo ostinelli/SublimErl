@@ -34,6 +34,7 @@ SUBLIMERL_VERSION = '0.2-dev'
 SUBLIMERL_LAST_TEST = None
 SUBLIMERL_LAST_TEST_TYPE = None
 CURRENT_PROJECT_ROOT = None
+CURRENT_FILE_TEST_ROOT = None
 
 
 # core launcher & panel
@@ -112,8 +113,8 @@ class SublimErlLauncher():
 				self.log_error("Cannot find a -module declaration: please add one to proceed.")
 				return
 
-		# set cwd to project's root path - so that rebar can access it
-		if self.set_cwd_to_otp_project_root() == False:
+		# save project's root paths
+		if self.save_project_roots() == False:
 			self.log_error("This code does not seem to be part of an OTP compilant project.")
 			return
 
@@ -205,40 +206,47 @@ class SublimErlLauncher():
 			m = re.match(r"^\s*-\s*module\s*\(\s*([a-zA-Z0-9_]+)\s*\)\s*\.", self.view.substr(module_region))
 			return m.group(1)
 
-	def set_cwd_to_otp_project_root(self):
-		global CURRENT_PROJECT_ROOT
-		# get otp directory
-		current_file_path = os.path.dirname(self.view.file_name())
-		otp_project_root = self.get_otp_project_root(current_file_path)
+	def save_project_roots(self):
+		global CURRENT_PROJECT_ROOT, CURRENT_FILE_TEST_ROOT
 
-		if otp_project_root == None:
-			CURRENT_PROJECT_ROOT = None
+		# get project & file roots
+		current_file_path = os.path.dirname(self.view.file_name())
+		project_root, file_test_root = self.get_project_roots(current_file_path)
+
+		if project_root == file_test_root == None:
+			CURRENT_PROJECT_ROOT = CURRENT_FILE_TEST_ROOT = None
 			return False
 
 		# save
-		CURRENT_PROJECT_ROOT = os.path.abspath(otp_project_root)
+		CURRENT_PROJECT_ROOT = os.path.abspath(project_root)
+		CURRENT_FILE_TEST_ROOT = os.path.abspath(file_test_root)
 
-		# TODO: SWITCH THIS set current directory to root - needed by rebar
-		os.chdir(CURRENT_PROJECT_ROOT)
+	def get_project_roots(self, current_dir, project_root_candidate=None, file_test_root_candidate=None):
+		# if rebar.config or a src directory exists, save as potential candidate
+		if os.path.exists(os.path.join(current_dir, 'rebar.config')) or os.path.exists(os.path.join(current_dir, 'src')):
+			# set project root candidate
+			project_root_candidate = current_dir
+			# set test root candidate if none set yet
+			if file_test_root_candidate == None: file_test_root_candidate = current_dir
 
-	def get_otp_project_root(self, current_dir, project_root_candidate=None):
-		# if rebar.config exists, stop walking up
-		if os.path.exists(os.path.join(current_dir, 'rebar.config')): return current_dir
-		# if a src directory exists, save as potential candidate
-		if os.path.exists(os.path.join(current_dir, 'src')): project_root_candidate = current_dir
-		# keep walking up until root or until rebar.config
 		current_dir_split = current_dir.split(os.sep)
 		# if went up to root, stop and return current candidate
-		if len(current_dir_split) < 2: return project_root_candidate
+		if len(current_dir_split) < 2: return (project_root_candidate, file_test_root_candidate)
 		# walk up directory
 		current_dir_split.pop()
-		return self.get_otp_project_root(os.sep.join(current_dir_split), project_root_candidate)
+		return self.get_project_roots(os.sep.join(current_dir_split), project_root_candidate, file_test_root_candidate)
 
 	def get_project_root(self):
 		global CURRENT_PROJECT_ROOT
 		return CURRENT_PROJECT_ROOT
 
-	def execute_os_command(self, os_cmd, block=False):
+	def execute_os_command(self, os_cmd, dir_type=None, block=False):
+		# set dir
+		global CURRENT_PROJECT_ROOT, CURRENT_FILE_TEST_ROOT
+		if dir_type == 'root': os.chdir(CURRENT_PROJECT_ROOT)
+		elif dir_type == 'test': os.chdir(CURRENT_FILE_TEST_ROOT)
+		
+		# start proc
 		p = subprocess.Popen(os_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, env=self.env)
 		if block == True:
 			stdout, stderr = p.communicate()
@@ -252,7 +260,7 @@ class SublimErlLauncher():
 
 	def compile_source(self):
 		# compile to ebin
-		retcode, data = self.execute_os_command('%s compile' % self.rebar_path, True)
+		retcode, data = self.execute_os_command('%s compile' % self.rebar_path, dir_type='root', block=True)
 		
 
 # test runner
@@ -395,7 +403,7 @@ class SublimErlTestRunner(SublimErlLauncher):
 
 	def compile_eunit_no_run(self):
 		# call rebar to compile -  HACK: passing in a non-existing suite forces rebar to not run the test suite
-		retcode, data = self.execute_os_command('%s eunit suite=sublimerl_unexisting_test' % self.rebar_path, True)
+		retcode, data = self.execute_os_command('%s eunit suite=sublimerl_unexisting_test' % self.rebar_path, dir_type='test', block=True)
 		if re.search(r"sublimerl_unexisting_test", data) != None:
 			# expected error returned (due to the hack)
 			return 0
@@ -406,12 +414,13 @@ class SublimErlTestRunner(SublimErlLauncher):
 		# build & run erl command
 		mod_function = "%s:%s" % (module_tests_name, function_name)
 		erl_command = "-noshell -pa .eunit -eval \"eunit:test({generator, fun %s})\" -s init stop" % mod_function
-		retcode, data = self.execute_os_command('%s %s' % (self.erl_path, erl_command), False)
+
+		retcode, data = self.execute_os_command('%s %s' % (self.erl_path, erl_command), dir_type='test', block=False)
 		# interpret
 		self.interpret_eunit_test_results(retcode, data)
 
 	def compile_eunit_run_suite(self, suite):
-		retcode, data = self.execute_os_command('%s eunit suite=%s' % (self.rebar_path, suite), False)
+		retcode, data = self.execute_os_command('%s eunit suite=%s' % (self.rebar_path, suite), dir_type='test', block=False)
 		# interpret
 		self.interpret_eunit_test_results(retcode, data)
 
@@ -443,7 +452,7 @@ class SublimErlTestRunner(SublimErlLauncher):
 		# compile all source code
 		self.compile_source()
 		# run suite
-		retcode, data = self.execute_os_command('%s ct suites=%s' % (self.rebar_path, module_tests_name), False)
+		retcode, data = self.execute_os_command('%s ct suites=%s' % (self.rebar_path, module_tests_name), dir_type='test', block=False)
 		# interpret
 		self.interpret_ct_test_results(retcode, data)
 
@@ -471,7 +480,7 @@ class SublimErlTestRunner(SublimErlLauncher):
 		# compile eunit
 		self.compile_eunit_no_run()
 		# run dialyzer
-		retcode, data = self.execute_os_command('%s -n .eunit/%s.beam' % (self.dialyzer_path, module_tests_name), False)
+		retcode, data = self.execute_os_command('%s -n .eunit/%s.beam' % (self.dialyzer_path, module_tests_name), dir_type='test', block=False)
 		# interpret
 		self.interpret_dialyzer_test_results(retcode, data)
 
@@ -531,6 +540,9 @@ class SublimErlTestRedoCommand(SublimErlTextCommand):
 		# run tests
 		test_runner.start_test()
 
+	def _context_match(self):
+		return True
+
 	def show_contextual_menu(self):
 		return SUBLIMERL_LAST_TEST != None
 
@@ -545,6 +557,6 @@ class SublimErlCtResultsCommand(SublimErlTextCommand):
 		if os.path.exists(index_path): webbrowser.open(index_path)
 
 	def show_contextual_menu(self):
-		index_path = os.path.abspath(os.path.join(CURRENT_PROJECT_ROOT, 'logs', 'index.html'))
+		index_path = os.path.abspath(os.path.join(CURRENT_FILE_TEST_ROOT, 'logs', 'index.html'))
 		return os.path.exists(index_path)
 
