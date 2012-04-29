@@ -540,9 +540,6 @@ class SublimErlTestRedoCommand(SublimErlTextCommand):
 		# run tests
 		test_runner.start_test()
 
-	def _context_match(self):
-		return True
-
 	def show_contextual_menu(self):
 		return SUBLIMERL_LAST_TEST != None
 
