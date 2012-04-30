@@ -71,6 +71,7 @@ class SublimErlCompletionsListener(sublime_plugin.EventListener):
 		load_erlang_lib_completions = self.load_erlang_lib_completions
 		class SublimErlThread(threading.Thread):
 			def run(self):
+				launcher.status("Regenerating Erlang lib completions...")
 				# set new status
 				global SUBLIMERL_COMPLETIONS_ERLANG_LIBS_REBUILT
 				SUBLIMERL_COMPLETIONS_ERLANG_LIBS_REBUILT = True
@@ -82,6 +83,8 @@ class SublimErlCompletionsListener(sublime_plugin.EventListener):
 				retcode, data = launcher.execute_os_command('%s %s' % (launcher.escript_path, escript_command), block=True)
 				# trigger event to reload completions
 				sublime.set_timeout(load_erlang_lib_completions, 0)
+				launcher.status("Finished regenerating Erlang lib completions.")
+
 		SublimErlThread().start()
 
 	def generate_project_completions(self):
@@ -93,6 +96,7 @@ class SublimErlCompletionsListener(sublime_plugin.EventListener):
 		load_project_completions = self.load_project_completions
 		class SublimErlThread(threading.Thread):
 			def run(self):
+				launcher.status("Regenerating Project completions...")
 				# set lock
 				global SUBLIMERL_COMPLETIONS_PROJECT_REBUILD_IN_PROGRESS
 				SUBLIMERL_COMPLETIONS_PROJECT_REBUILD_IN_PROGRESS = True
@@ -106,6 +110,8 @@ class SublimErlCompletionsListener(sublime_plugin.EventListener):
 				SUBLIMERL_COMPLETIONS_PROJECT_REBUILD_IN_PROGRESS = False
 				# trigger event to reload completions
 				sublime.set_timeout(load_project_completions, 0)
+				launcher.status("Finished regenerating Project completions.")
+
 		SublimErlThread().start()
 
 	def load_project_completions(self):

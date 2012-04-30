@@ -44,6 +44,7 @@ class SublimErlLauncher():
 		# init
 		self.panel_name = 'sublimerl'
 		self.panel_buffer = ''
+		self.status_buffer = ''
 		self.view = view
 		self.window = view.window()
 		self.env = None
@@ -82,6 +83,11 @@ class SublimErlLauncher():
 			else:
 				self.window.run_command("hide_panel", {"panel": "output.%s" % self.panel_name})
 
+	def update_status(self):
+		if len(self.status_buffer):
+			sublime.status_message(self.status_buffer)
+			self.status_buffer = ''
+
 	def log(self, text):
 		if self.show_log:
 			self.panel_buffer += text
@@ -89,6 +95,10 @@ class SublimErlLauncher():
 
 	def log_error(self, error_text):
 		self.log("Error => %s\n[ABORTED]\n" % error_text)
+
+	def status(self, text):
+		self.status_buffer += text
+		sublime.set_timeout(self.update_status, 0)
 
 	def plugin_path(self):
 		return os.path.join(sublime.packages_path(), 'SublimErl')
