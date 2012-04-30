@@ -170,11 +170,14 @@ class SublimErlLauncher():
 		# TODO: enhance the finding of paths
 		if sublime.platform() == 'osx':
 			# get relevant file paths
-			etc_paths = '/etc/paths'
+			etc_paths = ['/etc/paths']
+			for f in os.listdir('/etc/paths.d'):
+				etc_paths.append(os.path.abspath(f))
+			# bash profile
 			bash_profile_path = os.path.join(os.getenv('HOME'), '.bash_profile')
 			# get env paths
-			additional_paths = "%s:%s" % (self.readfiles_one_path_per_line([etc_paths]), self.readfiles_exported_paths([bash_profile_path]))
-			# add additional paths
+			additional_paths = "%s:%s" % (self.readfiles_one_path_per_line(etc_paths), self.readfiles_exported_paths([bash_profile_path]))
+			# add
 			self.env['PATH'] = self.env['PATH'] + additional_paths
 
 	def readfiles_one_path_per_line(self, file_paths):
@@ -245,7 +248,6 @@ class SublimErlLauncher():
 		global CURRENT_PROJECT_ROOT, CURRENT_FILE_TEST_ROOT
 		if dir_type == 'root': os.chdir(CURRENT_PROJECT_ROOT)
 		elif dir_type == 'test': os.chdir(CURRENT_FILE_TEST_ROOT)
-		
 		# start proc
 		p = subprocess.Popen(os_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, env=self.env)
 		if block == True:
@@ -261,8 +263,8 @@ class SublimErlLauncher():
 	def compile_source(self):
 		# compile to ebin
 		retcode, data = self.execute_os_command('%s compile' % self.rebar_path, dir_type='root', block=True)
-		
 
+		
 # test runner
 class SublimErlTestRunner(SublimErlLauncher):
 
