@@ -27,7 +27,7 @@
 # ==========================================================================================================
 
 import sublime, sublime_plugin
-import os, threading
+import os, threading, re, fnmatch
 from sublimerl import SublimErlLauncher
 
 # globals
@@ -92,25 +92,32 @@ class SublimErlCompletionsListener(sublime_plugin.EventListener):
 		global SUBLIMERL_COMPLETIONS_PROJECT_REBUILD_IN_PROGRESS
 		if SUBLIMERL_COMPLETIONS_PROJECT_REBUILD_IN_PROGRESS == True: return
 		# rebuild
-		launcher = self.launcher
-		load_project_completions = self.load_project_completions
+		this = self
 		class SublimErlThread(threading.Thread):
 			def run(self):
-				launcher.status("Regenerating Project completions...")
+				this.launcher.status("Regenerating Project completions...")
 				# set lock
 				global SUBLIMERL_COMPLETIONS_PROJECT_REBUILD_IN_PROGRESS
 				SUBLIMERL_COMPLETIONS_PROJECT_REBUILD_IN_PROGRESS = True
-				# change cwd - TODO: check that this doesn't interfere with other plugins
-				completion_path = os.path.join(launcher.plugin_path(), "completion")
-				os.chdir(completion_path)
-				# run escript to get all erlang lib exports
-				escript_command = "sublimerl_libparser.erl \"Current-Project\" \"%s\"" % launcher.get_project_root()
-				retcode, data = launcher.execute_os_command('%s %s' % (launcher.escript_path, escript_command), block=True)
+
+				# start gen
+				disasm_filepath = os.path.join(this.launcher.plugin_path(), "completion", "Current-Project.disasm")
+				f_disasm = open(disasm_filepath, 'wb')
+				this.gen_completions(this.launcher.get_project_root(), f_disasm)
+				f_disasm.close()
+
+
+				# # change cwd - TODO: check that this doesn't interfere with other plugins
+				# completion_path = os.path.join(launcher.plugin_path(), "completion")
+				# os.chdir(completion_path)
+				# # run escript to get all erlang lib exports
+				# escript_command = "sublimerl_libparser.erl \"Current-Project\" \"%s\"" % launcher.get_project_root()
+				# retcode, data = launcher.execute_os_command('%s %s' % (launcher.escript_path, escript_command), block=True)
 				# release lock
 				SUBLIMERL_COMPLETIONS_PROJECT_REBUILD_IN_PROGRESS = False
 				# trigger event to reload completions
-				sublime.set_timeout(load_project_completions, 0)
-				launcher.status("Finished regenerating Project completions.")
+				sublime.set_timeout(this.load_project_completions, 0)
+				this.launcher.status("Finished regenerating Project completions.")
 
 		SublimErlThread().start()
 
@@ -129,6 +136,65 @@ class SublimErlCompletionsListener(sublime_plugin.EventListener):
 					global SUBLIMERL_COMPLETIONS_PROJECT
 					SUBLIMERL_COMPLETIONS_PROJECT = eval(completions)
 		SublimErlThread().start()
+
+	def gen_completions(self, starting_dir, f_disasm):
+		completions = []
+		# loop directory
+		for root, dirnames, filenames in os.walk(starting_dir):
+			for filename in fnmatch.filter(filenames, r"*.erl"):
+				if root.split('/')[-1] == 'src':
+					# source file in a src directory
+					filepath = os.path.join(root, filename)
+					f = open(filepath, 'r')
+					module = f.read()
+					f.close()
+					module_name, module_ext = os.path.splitext(filename)
+					completions.append("'%s': %s" % (module_name, self.get_module_completions(module)))
+		# write to file
+		f_disasm.write("{\n" + ',\n'.join(completions) + "\n}")
+
+	def get_module_completions(self, module):
+		# get exports
+		exports = re.search(r"-\s*export\s*\(\s*\[\s*(.*)\s*\]\s*\)\s*\.", module)
+		if exports == None: return []
+		exports = exports.group(1).split(',')
+		# get completions
+		completions = []
+		for export in exports:
+			export = export.strip()
+			fun = export.split('/')
+			completions.append((export, '%s%s' % (fun[0], self.gen_params(module, fun))))
+		return completions
+
+	def gen_params(self, module, fun):
+		count = int(fun[1])
+		# generate regex
+		params = []
+		for i in range(0, count): params.append(r"\s*([A-Z_][A-Za-z0-9_]*|.*)\s*")
+		regex = fun[0].strip() + r"\s*\(" + (",".join(params)) + r"\)\s*->"
+		# myfunc\s*\(\s*([A-Z_][A-Za-z0-9_]*|.*)\s*,\s*([A-Z_][A-Za-z0-9_]*|.*)\s*\)\s*->
+		varname_regex = r"^[A-Z][a-zA-Z0-9_]*$"
+		# loop matches
+		current_params = []
+		for m in re.finditer(regex, module, re.MULTILINE):
+			if current_params != []:
+				groups = m.groups()
+				for i in range(0, len(groups)):
+					if not re.search(varname_regex, current_params[i]):
+						# current param does not match a variable name
+						if re.search(varname_regex, groups[i]):
+							# if current param is a variable name
+							current_params[i] = groups[i]
+			else:
+				current_params = list(m.groups())
+		# ensure current params have variable names
+		for i in range(0, len(current_params)):
+			if not re.search(varname_regex, current_params[i]):
+				current_params[i] = '${%d:Param%d}' % (i + 1, i + 1)
+			else:
+				current_params[i] = '${%d:%s}' % (i + 1, current_params[i])
+
+		return '(' + ', '.join(current_params) + ') $%d' % (len(current_params) + 1)
 
 	# CALLBACK ON VIEW SAVE
 	def on_post_save(self, view):
