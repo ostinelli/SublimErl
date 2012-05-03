@@ -66,24 +66,36 @@ class SublimErlCompletionsListener(sublime_plugin.EventListener):
 					SUBLIMERL_COMPLETIONS_ERLANG_LIBS = eval(completions)
 		SublimErlThread().start()
 
+	def get_erlang_libs_path(self):
+		completion_path = os.path.join(self.launcher.plugin_path(), "completion")
+		os.chdir(completion_path)
+		# run escript to get erlang lib path
+		escript_command = "sublimerl_utility.erl"
+		retcode, data = self.launcher.execute_os_command('%s %s' % (self.launcher.escript_path, escript_command), block=True)
+		return data
+
 	def generate_erlang_lib_completions(self):
-		launcher = self.launcher
-		load_erlang_lib_completions = self.load_erlang_lib_completions
+		# rebuild
+		this = self
 		class SublimErlThread(threading.Thread):
 			def run(self):
-				launcher.status("Regenerating Erlang lib completions...")
+				this.launcher.status("Regenerating Erlang lib completions...")
 				# set new status
 				global SUBLIMERL_COMPLETIONS_ERLANG_LIBS_REBUILT
 				SUBLIMERL_COMPLETIONS_ERLANG_LIBS_REBUILT = True
-				# change cwd - TODO: check that this doesn't interfere with other plugins
-				completion_path = os.path.join(launcher.plugin_path(), "completion")
-				os.chdir(completion_path)
-				# run escript to get all erlang lib exports
-				escript_command = "sublimerl_libparser.erl \"Erlang-Libs\""
-				retcode, data = launcher.execute_os_command('%s %s' % (launcher.escript_path, escript_command), block=True)
+
+				# start gen
+				disasms_filepath = os.path.join(this.launcher.plugin_path(), "completion", "Erlang-Libs.disasm")
+				completions_filepath = os.path.join(this.launcher.plugin_path(), "completion", "Erlang-Libs.sublime-completions")
+				f_disasms = open(disasms_filepath, 'wb')
+				f_completions = open(completions_filepath, 'wb')
+				this.generate_completions(this.get_erlang_libs_path(), f_disasms, f_completions)
+				f_disasms.close()
+				f_completions.close()
+
 				# trigger event to reload completions
-				sublime.set_timeout(load_erlang_lib_completions, 0)
-				launcher.status("Finished regenerating Erlang lib completions.")
+				sublime.set_timeout(this.load_erlang_lib_completions, 0)
+				this.launcher.status("Finished regenerating Erlang lib completions.")
 
 		SublimErlThread().start()
 
@@ -101,18 +113,14 @@ class SublimErlCompletionsListener(sublime_plugin.EventListener):
 				SUBLIMERL_COMPLETIONS_PROJECT_REBUILD_IN_PROGRESS = True
 
 				# start gen
-				disasm_filepath = os.path.join(this.launcher.plugin_path(), "completion", "Current-Project.disasm")
-				f_disasm = open(disasm_filepath, 'wb')
-				this.gen_completions(this.launcher.get_project_root(), f_disasm)
-				f_disasm.close()
+				disasms_filepath = os.path.join(this.launcher.plugin_path(), "completion", "Current-Project.disasm")
+				completions_filepath = os.path.join(this.launcher.plugin_path(), "completion", "Current-Project.sublime-completions")
+				f_disasms = open(disasms_filepath, 'wb')
+				f_completions = open(completions_filepath, 'wb')
+				this.generate_completions(this.launcher.get_project_root(), f_disasms, f_completions)
+				f_disasms.close()
+				f_completions.close()
 
-
-				# # change cwd - TODO: check that this doesn't interfere with other plugins
-				# completion_path = os.path.join(launcher.plugin_path(), "completion")
-				# os.chdir(completion_path)
-				# # run escript to get all erlang lib exports
-				# escript_command = "sublimerl_libparser.erl \"Current-Project\" \"%s\"" % launcher.get_project_root()
-				# retcode, data = launcher.execute_os_command('%s %s' % (launcher.escript_path, escript_command), block=True)
 				# release lock
 				SUBLIMERL_COMPLETIONS_PROJECT_REBUILD_IN_PROGRESS = False
 				# trigger event to reload completions
@@ -137,42 +145,79 @@ class SublimErlCompletionsListener(sublime_plugin.EventListener):
 					SUBLIMERL_COMPLETIONS_PROJECT = eval(completions)
 		SublimErlThread().start()
 
-	def gen_completions(self, starting_dir, f_disasm):
+	def generate_completions(self, starting_dir, f_disasms, f_completions):
+		disasms = []
 		completions = []
 		# loop directory
 		for root, dirnames, filenames in os.walk(starting_dir):
 			for filename in fnmatch.filter(filenames, r"*.erl"):
 				if root.split('/')[-1] == 'src':
+					# get module name
+					module_name, module_ext = os.path.splitext(filename)
 					# source file in a src directory
 					filepath = os.path.join(root, filename)
 					f = open(filepath, 'r')
 					module = f.read()
 					f.close()
-					module_name, module_ext = os.path.splitext(filename)
-					completions.append("'%s': %s" % (module_name, self.get_module_completions(module)))
-		# write to file
-		f_disasm.write("{\n" + ',\n'.join(completions) + "\n}")
+					module_completions = self.get_completions(module)
+					if len(module_completions) > 0:
+						disasms.append("'%s': %s" % (module_name, module_completions))
+						completions.append("{ \"trigger\": \"%s\", \"contents\": \"%s\" }" % (module_name, module_name))
 
-	def get_module_completions(self, module):
-		# get exports
-		exports = re.search(r"-\s*export\s*\(\s*\[\s*(.*)\s*\]\s*\)\s*\.", module)
-		if exports == None: return []
-		exports = exports.group(1).split(',')
-		# get completions
+		# write to files
+		f_disasms.write("{\n" + ',\n'.join(disasms) + "\n}")
+		if len(completions) > 0:
+			f_completions.write("{ \"scope\": \"source.erlang\", \"completions\": [ \"erlang\",\n" + ',\n'.join(completions) + "\n]}")
+		else:
+			f_completions.write("")
+
+
+	def get_completions(self, module):
+		# get export portion in code module
+		export_section = re.search(r"^\s*-\s*export\s*\(\s*\[\s*([^\]]*)\s*\]\s*\)\s*\.", module, re.DOTALL + re.MULTILINE)
+		if export_section == None: return []
+		# get list of exports
+		exports = self.get_list_of_exports(export_section)
+		if len(exports) == 0: return []
+		# generate
+		return self.generate_module_completions(module, exports)
+
+	def get_list_of_exports(self, export_section):
+		# loop every line and add exports
+		all_exports = []
+		for m in re.finditer(r"(.*)", export_section.group(1), re.MULTILINE):
+			groups = m.groups()
+			for i in range(0, len(groups)):
+				# strip away code comments
+				export = groups[i].strip().split('%')
+				# strip away empty lines
+				if len(export[0]) > 0:
+					exports = export[0].split(',')
+					for export in exports:
+						export = export.strip()
+						if len(export) > 0:
+							all_exports.append(export)
+		return all_exports
+
+	def generate_module_completions(self, module, exports):
 		completions = []
 		for export in exports:
-			export = export.strip()
+			# split param count definition
 			fun = export.split('/')
-			completions.append((export, '%s%s' % (fun[0], self.gen_params(module, fun))))
+			if len(fun) == 2:
+				params = self.generate_params(module, fun)
+				if params != None:
+					completions.append((export, '%s%s' % (fun[0].strip(), params)))
 		return completions
 
-	def gen_params(self, module, fun):
-		count = int(fun[1])
+	def generate_params(self, module, fun):
+		# get params count
+		try: count = int(fun[1])
+		except: return 
 		# generate regex
 		params = []
 		for i in range(0, count): params.append(r"\s*([A-Z_][A-Za-z0-9_]*|.*)\s*")
 		regex = fun[0].strip() + r"\s*\(" + (",".join(params)) + r"\)\s*->"
-		# myfunc\s*\(\s*([A-Z_][A-Za-z0-9_]*|.*)\s*,\s*([A-Z_][A-Za-z0-9_]*|.*)\s*\)\s*->
 		varname_regex = r"^[A-Z][a-zA-Z0-9_]*$"
 		# loop matches
 		current_params = []
