@@ -27,7 +27,7 @@
 # ==========================================================================================================
 
 import sublime, sublime_plugin
-import os, threading, re, fnmatch
+import os, threading, re, fnmatch, pickle
 from sublimerl import SublimErlLauncher
 
 # globals
@@ -91,20 +91,36 @@ class SublimErlCompletionsListener(sublime_plugin.EventListener):
 		global SUBLIMERL_COMPLETIONS_ERLANG_LIBS_REBUILT
 		if SUBLIMERL_COMPLETIONS_ERLANG_LIBS_REBUILT == True: return
 		SUBLIMERL_COMPLETIONS_ERLANG_LIBS_REBUILT = True
-		
+
 		# rebuild
 		this = self
 		class SublimErlThread(threading.Thread):
 			def run(self):
-				this.launcher.status("Regenerating Erlang lib completions...")
 				# get dirs
-				starting_dir = this.get_erlang_libs_path()
 				completions_path = os.path.join(this.launcher.plugin_path(), "completion")
 				dest_file_base = os.path.join(completions_path, "Erlang-Libs")
+				# get current erlang libs
+				erlang_lib_path = this.get_erlang_libs_path()
+				current_erlang_libs = [x[0] for x in os.walk(erlang_lib_path)]
+				# read file of previous erlang libs
+				dirinfo_path = os.path.join(completions_path, "Erlang-Libs.dirinfo")
+				if os.path.exists(dirinfo_path):
+					f = open(dirinfo_path, 'rb')
+					erlang_libs = pickle.load(f)
+					f.close()
+					if current_erlang_libs == erlang_libs:
+						# same erlang libs, do not regenerate
+						return
+				# different erlang libs -> regenerate
+				this.launcher.status("Regenerating Erlang lib completions...")
+				# save dir information
+				f = open(dirinfo_path, 'wb')
+				pickle.dump(current_erlang_libs, f)
+				f.close()
 				# set cwd
 				os.chdir(completions_path)
 				# start gen
-				this.launcher.execute_os_command("python sublimerl_libparser.py %s %s" % (this.launcher.shellquote(starting_dir), this.launcher.shellquote(dest_file_base)))
+				this.launcher.execute_os_command("python sublimerl_libparser.py %s %s" % (this.launcher.shellquote(erlang_lib_path), this.launcher.shellquote(dest_file_base)))
 				# trigger event to reload completions
 				sublime.set_timeout(this.load_erlang_lib_completions, 0)
 				this.launcher.status("Finished regenerating Erlang lib completions.")
