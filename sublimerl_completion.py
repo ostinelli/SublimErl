@@ -44,12 +44,12 @@ class SublimErlCompletionsListener(sublime_plugin.EventListener):
 	def get_available_completions(self):
 		# load current erlang libs
 		global SUBLIMERL_COMPLETIONS_ERLANG_LIBS
-		# if SUBLIMERL_COMPLETIONS_ERLANG_LIBS == {}:	self.load_erlang_lib_completions()
+		if SUBLIMERL_COMPLETIONS_ERLANG_LIBS == {}:	self.load_erlang_lib_completions()
 		# start rebuilding: only done once per sublimerl session
 		# [i.e. needs sublime text restart to regenerate erlang completions]
-		# self.generate_erlang_lib_completions()
+		self.generate_erlang_lib_completions()
 		# generate & load project files
-		# self.generate_project_completions()
+		self.generate_project_completions()
 
 	def load_erlang_lib_completions(self):
 		# lock
@@ -97,26 +97,17 @@ class SublimErlCompletionsListener(sublime_plugin.EventListener):
 		class SublimErlThread(threading.Thread):
 			def run(self):
 				this.launcher.status("Regenerating Erlang lib completions...")
-
-				# start gen
+				# get dirs
 				starting_dir = this.get_erlang_libs_path()
-				dest_file_base = os.path.join(this.launcher.plugin_path(), "completion", "Erlang-Libs")
-
-				print starting_dir
-				print dest_file_base
-
-				def shellquote(s):
-					return "'" + s.replace("'", "'\\''") + "'"
-
-
-				# this.launcher.execute_os_command("python %s %s" % (shellquote(starting_dir), shellquote(dest_file_base))
-				# this.generate_completions(this.get_erlang_libs_path(), os.path.join(this.launcher.plugin_path(), "completion", "Erlang-Libs"))
-
+				completions_path = os.path.join(this.launcher.plugin_path(), "completion")
+				dest_file_base = os.path.join(completions_path, "Erlang-Libs")
+				# set cwd
+				os.chdir(completions_path)
+				# start gen
+				this.launcher.execute_os_command("python sublimerl_libparser.py %s %s" % (this.launcher.shellquote(starting_dir), this.launcher.shellquote(dest_file_base)))
 				# trigger event to reload completions
 				sublime.set_timeout(this.load_erlang_lib_completions, 0)
 				this.launcher.status("Finished regenerating Erlang lib completions.")
-				global SUBLIMERL_COMPLETIONS_ERLANG_LIBS_REBUILT
-				SUBLIMERL_COMPLETIONS_ERLANG_LIBS_REBUILT = False
 
 		SublimErlThread().start()
 
@@ -132,10 +123,14 @@ class SublimErlCompletionsListener(sublime_plugin.EventListener):
 				# set lock
 				global SUBLIMERL_COMPLETIONS_PROJECT_REBUILD_IN_PROGRESS
 				SUBLIMERL_COMPLETIONS_PROJECT_REBUILD_IN_PROGRESS = True
-
+				# get dirs
+				starting_dir = this.launcher.get_project_root()
+				completions_path = os.path.join(this.launcher.plugin_path(), "completion")
+				dest_file_base = os.path.join(completions_path, "Current-Project")
+				# set cwd
+				os.chdir(completions_path)
 				# start gen
-				this.generate_completions(this.launcher.get_project_root(), os.path.join(this.launcher.plugin_path(), "completion", "Current-Project"))
-
+				this.launcher.execute_os_command("python sublimerl_libparser.py %s %s" % (this.launcher.shellquote(starting_dir), this.launcher.shellquote(dest_file_base)))
 				# release lock
 				SUBLIMERL_COMPLETIONS_PROJECT_REBUILD_IN_PROGRESS = False
 				# trigger event to reload completions
@@ -180,7 +175,7 @@ class SublimErlCompletionsListener(sublime_plugin.EventListener):
 		SublimErlThread().start()
 
 	# CALLBACK ON VIEW LOADED
-	def on_activated(self, view):
+	def on_load(self, view):
 		# only trigger within erlang
 		caret = view.sel()[0].a
 		if not ('source.erlang' in view.scope_name(caret) and sublime.platform() != 'windows'): return

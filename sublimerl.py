@@ -270,6 +270,9 @@ class SublimErlLauncher():
 				stdout.append(line)
 			return (p.returncode, ''.join(stdout))
 
+	def shellquote(self, s):
+		return "'" + s.replace("'", "'\\''") + "'"
+
 	def compile_source(self):
 		# compile to ebin
 		retcode, data = self.execute_os_command('%s compile' % self.rebar_path, dir_type='root', block=True)
