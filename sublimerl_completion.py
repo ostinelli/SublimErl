@@ -97,11 +97,11 @@ class SublimErlCompletionsListener(sublime_plugin.EventListener):
 		class SublimErlThread(threading.Thread):
 			def run(self):
 				# get dirs
+				erlang_lib_path = this.get_erlang_libs_path()
 				completions_path = os.path.join(this.launcher.plugin_path(), "completion")
 				dest_file_base = os.path.join(completions_path, "Erlang-Libs")
-				# get current erlang libs
-				erlang_lib_path = this.get_erlang_libs_path()
-				current_erlang_libs = [x[0] for x in os.walk(erlang_lib_path)]
+				# get erlang libs info
+				current_erlang_libs = [name for name in os.listdir(erlang_lib_path) if os.path.isdir(os.path.join(erlang_lib_path, name))]
 				# read file of previous erlang libs
 				dirinfo_path = os.path.join(completions_path, "Erlang-Libs.dirinfo")
 				if os.path.exists(dirinfo_path):
