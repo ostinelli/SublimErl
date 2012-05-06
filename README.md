@@ -17,7 +17,7 @@ Screenshots
 
 Here's a screenshot of SublimErl's **Code Completion** feature:
 
-![SublimErl screenshot](http://www.ostinelli.net/_out_images/code_completion.gif)
+![SublimErl screenshot](http://www.ostinelli.net/_out_images/code_completion_full.gif)
 
 Here's a screenshot of SublimErl **running an Eunit specific test** in file.
 
