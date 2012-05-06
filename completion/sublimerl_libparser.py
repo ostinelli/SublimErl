@@ -29,28 +29,32 @@
 import sys, re, os, fnmatch
 
 
-# python sublimerl_libparser.py '/usr/local/lib/erlang/lib' '/Users/roberto/Library/Application Support/Sublime Text 2/Packages/SublimErl/completion/Erlang-Libs'
-
 class SublimErlLibParser():
 
 	def generate_completions(self, starting_dir, dest_file_base):
 		disasms = []
 		completions = []
 		# loop directory
+		rel_dirs = []
 		for root, dirnames, filenames in os.walk(starting_dir):
+			if 'reltool.config' in filenames:
+				# find a release directory, ignore autocompletion for these files
+				rel_dirs.append(root)
 			for filename in fnmatch.filter(filenames, r"*.erl"):
 				if root.split('/')[-1] == 'src':
-					# get module name
-					module_name, module_ext = os.path.splitext(filename)
 					# source file in a src directory
 					filepath = os.path.join(root, filename)
-					f = open(filepath, 'r')
-					module = f.read()
-					f.close()
-					module_completions = self.get_completions(module)
-					if len(module_completions) > 0:
-						disasms.append("'%s': %s" % (module_name, module_completions))
-						completions.append("{ \"trigger\": \"%s\", \"contents\": \"%s\" }" % (module_name, module_name))
+					# check if in release directory
+					if not (True in [filepath.find(rel_dir) != -1 for rel_dir in rel_dirs]):
+						# not in a release directory, get module name
+						module_name, module_ext = os.path.splitext(filename)
+						f = open(filepath, 'r')
+						module = f.read()
+						f.close()
+						module_completions = self.get_completions(module)
+						if len(module_completions) > 0:
+							disasms.append("'%s': %s" % (module_name, module_completions))
+							completions.append("{ \"trigger\": \"%s\", \"contents\": \"%s\" }" % (module_name, module_name))
 
 		# write to files
 		f_disasms = open("%s.disasm" % dest_file_base, 'wb')
