@@ -31,10 +31,13 @@ import sys, os, re, subprocess, threading, webbrowser
 
 # globals
 SUBLIMERL_VERSION = '0.2-dev'
-SUBLIMERL_LAST_TEST = None
-SUBLIMERL_LAST_TEST_TYPE = None
-CURRENT_PROJECT_ROOT = None
-CURRENT_FILE_TEST_ROOT = None
+
+SUBLIMERL = {
+	'last_test': None,
+	'last_test_type': None,
+	'project_root': None,
+	'test_root': None
+}
 
 
 # core launcher & panel
@@ -175,8 +178,8 @@ class SublimErlLauncher():
 	def set_env(self):
 		self.env = os.environ.copy()
 		# add project root
-		global CURRENT_PROJECT_ROOT
-		self.env['PATH'] = "%s:%s" % (self.env['PATH'], CURRENT_PROJECT_ROOT)
+		global SUBLIMERL
+		self.env['PATH'] = "%s:%s" % (self.env['PATH'], SUBLIMERL['project_root'])
 		# TODO: enhance the finding of paths
 		if sublime.platform() == 'osx':
 			# get relevant file paths
@@ -220,19 +223,19 @@ class SublimErlLauncher():
 			return m.group(1)
 
 	def save_project_roots(self):
-		global CURRENT_PROJECT_ROOT, CURRENT_FILE_TEST_ROOT
+		global SUBLIMERL
 
 		# get project & file roots
 		current_file_path = os.path.dirname(self.view.file_name())
 		project_root, file_test_root = self.get_project_roots(current_file_path)
 
 		if project_root == file_test_root == None:
-			CURRENT_PROJECT_ROOT = CURRENT_FILE_TEST_ROOT = None
+			SUBLIMERL['project_root'] = SUBLIMERL['test_root'] = None
 			return False
 
 		# save
-		CURRENT_PROJECT_ROOT = os.path.abspath(project_root)
-		CURRENT_FILE_TEST_ROOT = os.path.abspath(file_test_root)
+		SUBLIMERL['project_root'] = os.path.abspath(project_root)
+		SUBLIMERL['test_root'] = os.path.abspath(file_test_root)
 
 	def get_project_roots(self, current_dir, project_root_candidate=None, file_test_root_candidate=None):
 		# if rebar.config or a src directory exists, save as potential candidate
@@ -250,14 +253,14 @@ class SublimErlLauncher():
 		return self.get_project_roots(os.sep.join(current_dir_split), project_root_candidate, file_test_root_candidate)
 
 	def get_project_root(self):
-		global CURRENT_PROJECT_ROOT
-		return CURRENT_PROJECT_ROOT
+		global SUBLIMERL
+		return SUBLIMERL['project_root']
 
 	def execute_os_command(self, os_cmd, dir_type=None, block=False):
 		# set dir
-		global CURRENT_PROJECT_ROOT, CURRENT_FILE_TEST_ROOT
-		if dir_type == 'root': os.chdir(CURRENT_PROJECT_ROOT)
-		elif dir_type == 'test': os.chdir(CURRENT_FILE_TEST_ROOT)
+		global SUBLIMERL
+		if dir_type == 'root': os.chdir(SUBLIMERL['project_root'])
+		elif dir_type == 'test': os.chdir(SUBLIMERL['test_root'])
 		# start proc
 		p = subprocess.Popen(os_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, env=self.env)
 		if block == True:
@@ -282,24 +285,24 @@ class SublimErlLauncher():
 class SublimErlTestRunner(SublimErlLauncher):
 
 	def reset_current_test(self):
-		global SUBLIMERL_LAST_TEST, SUBLIMERL_LAST_TEST_TYPE
-		SUBLIMERL_LAST_TEST = None
-		SUBLIMERL_LAST_TEST_TYPE = None
+		global SUBLIMERL
+		SUBLIMERL['last_test'] = None
+		SUBLIMERL['last_test_type'] = None
 
 	def start_test(self, dialyzer=False):
 		# do not continue if no previous test exists and a redo was asked
-		global SUBLIMERL_LAST_TEST, SUBLIMERL_LAST_TEST_TYPE
-		if SUBLIMERL_LAST_TEST == None and self.new == False: return
+		global SUBLIMERL
+		if SUBLIMERL['last_test'] == None and self.new == False: return
 
 		if self.new == True:
 			# reset test
 			self.reset_current_test()
 			# save test type
-			SUBLIMERL_LAST_TEST_TYPE = self.get_test_type(dialyzer)
+			SUBLIMERL['last_test_type'] = self.get_test_type(dialyzer)
 
-		if SUBLIMERL_LAST_TEST_TYPE == 'eunit': self.start_eunit_test()
-		elif SUBLIMERL_LAST_TEST_TYPE == 'ct': self.start_ct_test()
-		elif SUBLIMERL_LAST_TEST_TYPE == 'dialyzer': self.start_dialyzer_test()
+		if SUBLIMERL['last_test_type'] == 'eunit': self.start_eunit_test()
+		elif SUBLIMERL['last_test_type'] == 'ct': self.start_ct_test()
+		elif SUBLIMERL['last_test_type'] == 'dialyzer': self.start_dialyzer_test()
 
 	def get_test_type(self, dialyzer):
 		if dialyzer == True: return 'dialyzer'
@@ -331,7 +334,7 @@ class SublimErlTestRunner(SublimErlLauncher):
 				return "%s/0" % m.group(1)
 
 	def start_eunit_test(self):
-		global SUBLIMERL_LAST_TEST
+		global SUBLIMERL
 
 		if self.new == True:
 			# get test module name
@@ -348,11 +351,11 @@ class SublimErlTestRunner(SublimErlLauncher):
 
 			# save test
 			module_tests_name = self.erlang_module_name
-			SUBLIMERL_LAST_TEST = (module_name, module_tests_name, function_name)
+			SUBLIMERL['last_test'] = (module_name, module_tests_name, function_name)
 		
 		else:
 			# retrieve test info
-			module_name, module_tests_name, function_name = SUBLIMERL_LAST_TEST
+			module_name, module_tests_name, function_name = SUBLIMERL['last_test']
 
 		# run test
 		this = self
@@ -362,17 +365,17 @@ class SublimErlTestRunner(SublimErlLauncher):
 		SublimErlThread().start()
 		
 	def start_ct_test(self):
-		global SUBLIMERL_LAST_TEST
+		global SUBLIMERL
 
 		if self.new == True:
 			pos = self.erlang_module_name.find("_SUITE")
 			module_tests_name = self.erlang_module_name[0:pos]
 
 			# save test
-			SUBLIMERL_LAST_TEST = module_tests_name
+			SUBLIMERL['last_test'] = module_tests_name
 		
 		else:
-			module_tests_name = SUBLIMERL_LAST_TEST
+			module_tests_name = SUBLIMERL['last_test']
 
 		# run test
 		this = self
@@ -382,15 +385,15 @@ class SublimErlTestRunner(SublimErlLauncher):
 		SublimErlThread().start()
 
 	def start_dialyzer_test(self):
-		global SUBLIMERL_LAST_TEST
+		global SUBLIMERL
 
 		if self.new == True:
 			# save test
 			module_tests_name = self.erlang_module_name
-			SUBLIMERL_LAST_TEST = module_tests_name
+			SUBLIMERL['last_test'] = module_tests_name
 		
 		else:
-			module_tests_name = SUBLIMERL_LAST_TEST
+			module_tests_name = SUBLIMERL['last_test']
 
 		# run test
 		this = self
@@ -556,7 +559,8 @@ class SublimErlTestRedoCommand(SublimErlTextCommand):
 		test_runner.start_test()
 
 	def show_contextual_menu(self):
-		return SUBLIMERL_LAST_TEST != None
+		global SUBLIMERL
+		return SUBLIMERL['last_test'] != None
 
 # open CT results
 class SublimErlCtResultsCommand(SublimErlTextCommand):
@@ -569,6 +573,7 @@ class SublimErlCtResultsCommand(SublimErlTextCommand):
 		if os.path.exists(index_path): webbrowser.open(index_path)
 
 	def show_contextual_menu(self):
-		index_path = os.path.abspath(os.path.join(CURRENT_FILE_TEST_ROOT, 'logs', 'index.html'))
+		global SUBLIMERL
+		index_path = os.path.abspath(os.path.join(SUBLIMERL['test_root'], 'logs', 'index.html'))
 		return os.path.exists(index_path)
 
