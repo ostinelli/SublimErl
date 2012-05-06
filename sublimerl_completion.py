@@ -67,11 +67,11 @@ class SublimErlCompletionsListener(sublime_plugin.EventListener):
 				if os.path.exists(disasm_filepath):
 					# load file
 					f = open(disasm_filepath, 'r')
-					completions = f.read()
+					completions = pickle.load(f)
 					f.close()
 					# set
 					global SUBLIMERL_COMPLETIONS_ERLANG_LIBS
-					try: SUBLIMERL_COMPLETIONS_ERLANG_LIBS = eval(completions)
+					try: SUBLIMERL_COMPLETIONS_ERLANG_LIBS = completions
 					except: pass
 
 				# release lock
@@ -164,11 +164,11 @@ class SublimErlCompletionsListener(sublime_plugin.EventListener):
 				if os.path.exists(disasm_filepath):
 					# load file
 					f = open(disasm_filepath, 'r')
-					completions = f.read()
+					completions = pickle.load(f)
 					f.close()
 					# set
 					global SUBLIMERL_COMPLETIONS_PROJECT
-					SUBLIMERL_COMPLETIONS_PROJECT = eval(completions)
+					SUBLIMERL_COMPLETIONS_PROJECT = completions
 		SublimErlThread().start()
 
 	# CALLBACK ON VIEW SAVE

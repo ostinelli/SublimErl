@@ -26,7 +26,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 # ==========================================================================================================
 
-import sys, re, os, fnmatch
+import sys, re, os, fnmatch, pickle
 
 class SublimErlLibParser():
 
@@ -38,7 +38,7 @@ class SublimErlLibParser():
 		}
 
 	def generate_completions(self, starting_dir, dest_file_base):
-		disasms = []
+		disasms = {}
 		completions = []
 		# loop directory
 		rel_dirs = []
@@ -59,18 +59,19 @@ class SublimErlLibParser():
 						f.close()
 						module_completions = self.get_completions(module)
 						if len(module_completions) > 0:
-							disasms.append("'%s': %s" % (module_name, module_completions))
+							disasms[module_name] = module_completions
 							completions.append("{ \"trigger\": \"%s\", \"contents\": \"%s\" }" % (module_name, module_name))
 
-		# write to files
+		# write to files: disasms
 		f_disasms = open("%s.disasm" % dest_file_base, 'wb')
+		pickle.dump(disasms, f_disasms)
+		f_disasms.close()
+		# write to files: completions
 		f_completions = open("%s.sublime-completions" % dest_file_base, 'wb')
-		f_disasms.write("{\n" + ',\n'.join(disasms) + "\n}")
 		if len(completions) > 0:
 			f_completions.write("{ \"scope\": \"source.erlang\", \"completions\": [ \"erlang\",\n" + ',\n'.join(completions) + "\n]}")
 		else:
 			f_completions.write("")
-		f_disasms.close()
 		f_completions.close()
 
 	def get_completions(self, module):
