@@ -113,14 +113,14 @@ class SublimErlCompletionsListener(sublime_plugin.EventListener):
 						return
 				# different erlang libs -> regenerate
 				this.launcher.status("Regenerating Erlang lib completions...")
-				# save dir information
-				f = open(dirinfo_path, 'wb')
-				pickle.dump(current_erlang_libs, f)
-				f.close()
 				# set cwd
 				os.chdir(completions_path)
 				# start gen
 				this.launcher.execute_os_command("python sublimerl_libparser.py %s %s" % (this.launcher.shellquote(erlang_lib_path), this.launcher.shellquote(dest_file_base)))
+				# save dir information
+				f = open(dirinfo_path, 'wb')
+				pickle.dump(current_erlang_libs, f)
+				f.close()
 				# trigger event to reload completions
 				sublime.set_timeout(this.load_erlang_lib_completions, 0)
 				this.launcher.status("Finished regenerating Erlang lib completions.")

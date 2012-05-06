@@ -28,8 +28,14 @@
 
 import sys, re, os, fnmatch
 
-
 class SublimErlLibParser():
+
+	def __init__(self):
+		self.regex = {
+			'all': re.compile(r"(.*)", re.MULTILINE),
+			'export_section': re.compile(r"^\s*-\s*export\s*\(\s*\[\s*([^\]]*)\s*\]\s*\)\s*\.", re.DOTALL + re.MULTILINE),
+			'varname': re.compile(r"^[A-Z][a-zA-Z0-9_]*$")
+		}
 
 	def generate_completions(self, starting_dir, dest_file_base):
 		disasms = []
@@ -69,7 +75,7 @@ class SublimErlLibParser():
 
 	def get_completions(self, module):
 		# get export portion in code module
-		export_section = re.search(r"^\s*-\s*export\s*\(\s*\[\s*([^\]]*)\s*\]\s*\)\s*\.", module, re.DOTALL + re.MULTILINE)
+		export_section = self.regex['export_section'].search(module)
 		if export_section == None: return []
 		# get list of exports
 		exports = self.get_list_of_exports(export_section)
@@ -80,7 +86,7 @@ class SublimErlLibParser():
 	def get_list_of_exports(self, export_section):
 		# loop every line and add exports
 		all_exports = []
-		for m in re.finditer(r"(.*)", export_section.group(1), re.MULTILINE):
+		for m in self.regex['all'].finditer(export_section.group(1)):
 			groups = m.groups()
 			for i in range(0, len(groups)):
 				# strip away code comments
@@ -108,28 +114,31 @@ class SublimErlLibParser():
 	def generate_params(self, module, fun):
 		# get params count
 		try: count = int(fun[1])
-		except: return 
+		except: return
+
 		# generate regex
 		params = []
 		for i in range(0, count): params.append(r"\s*([A-Z_][A-Za-z0-9_]*|.*)\s*")
 		regex = fun[0].strip() + r"\s*\(" + (",".join(params)) + r"\)\s*->"
-		varname_regex = r"^[A-Z][a-zA-Z0-9_]*$"
+		regex = re.compile(regex, re.MULTILINE)
+
 		# loop matches
 		current_params = []
-		for m in re.finditer(regex, module, re.MULTILINE):
+		for m in regex.finditer(module):
 			if current_params != []:
 				groups = m.groups()
 				for i in range(0, len(groups)):
-					if not re.search(varname_regex, current_params[i]):
+					if not self.regex['varname'].search(current_params[i]):
 						# current param does not match a variable name
-						if re.search(varname_regex, groups[i]):
+						if self.regex['varname'].search(groups[i]):
 							# if current param is a variable name
 							current_params[i] = groups[i]
 			else:
 				current_params = list(m.groups())
+
 		# ensure current params have variable names
 		for i in range(0, len(current_params)):
-			if not re.search(varname_regex, current_params[i]):
+			if not self.regex['varname'].search(current_params[i]):
 				current_params[i] = '${%d:Param%d}' % (i + 1, i + 1)
 			else:
 				current_params[i] = '${%d:%s}' % (i + 1, current_params[i])
