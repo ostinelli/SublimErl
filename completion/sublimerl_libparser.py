@@ -47,7 +47,7 @@ class SublimErlLibParser():
 				# find a release directory, ignore autocompletion for these files
 				rel_dirs.append(root)
 			for filename in fnmatch.filter(filenames, r"*.erl"):
-				if root.split('/')[-1] == 'src':
+				if 'src' in root.split('/'):
 					# source file in a src directory
 					filepath = os.path.join(root, filename)
 					# check if in release directory
