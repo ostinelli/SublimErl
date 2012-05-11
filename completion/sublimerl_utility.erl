@@ -31,7 +31,7 @@
 -mode(compile).
 
 % command line exposure
-main([]) ->
+main(["lib_dir"]) ->
 	io:format("~s", [code:lib_dir()]);
 
 main(_) ->

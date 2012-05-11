@@ -172,7 +172,7 @@ class SublimErlCompletionsListener(sublime_plugin.EventListener):
 		completion_path = os.path.join(self.launcher.plugin_path(), "completion")
 		os.chdir(completion_path)
 		# run escript to get erlang lib path
-		escript_command = "sublimerl_utility.erl"
+		escript_command = "sublimerl_utility.erl lib_dir"
 		retcode, data = self.launcher.execute_os_command('%s %s' % (self.launcher.escript_path, escript_command), block=True)
 		return data
 
