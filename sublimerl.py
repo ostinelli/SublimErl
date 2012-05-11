@@ -30,7 +30,7 @@ import sublime, sublime_plugin
 import sys, os, re, subprocess, threading, webbrowser
 
 # globals
-SUBLIMERL_VERSION = '0.2-RC1'
+SUBLIMERL_VERSION = '0.2-RC2'
 
 SUBLIMERL = {
 	'last_test': None,
