@@ -79,13 +79,16 @@ class SublimErlLibParser():
 
 	def get_completions(self, module):
 		# get export portion in code module
-		export_section = self.regex['export_section'].search(module)
-		if export_section == None: return []
-		# get list of exports
-		exports = self.get_code_list_without_comments(export_section.group(1))
-		if len(exports) == 0: return []
-		# generate
-		return self.generate_module_completions(module, exports)
+		all_completions = []
+		for m in self.regex['export_section'].finditer(module):
+			export_section = m.groups()[0]
+			if export_section:
+				# get list of exports
+				exports = self.get_code_list_without_comments(export_section)
+				if len(exports) > 0:
+					all_completions.extend(self.generate_module_completions(module, exports))
+		# return all_completions
+		return all_completions
 
 	def generate_module_completions(self, module, exports):
 		completions = []
@@ -107,6 +110,8 @@ class SublimErlLibParser():
 		regex = re.compile(r"%s\((.*)\)" % fun[0], re.MULTILINE)
 		for m in regex.finditer(module):
 			params = m.groups()[0]
+			# ensure there's no 'when'
+			params = params.split(')')[0]
 			params = self.split_params(params)
 			if len(params) == arity:
 				# function definition has the correct arity
@@ -183,7 +188,8 @@ class TestSequenceFunctions(unittest.TestCase):
 				Two,  % param two
 
 				Three % param three
-			 """, ["One", "Two", "Three"])
+			 """, ["One", "Two", "Three"]),
+			("#client{name=Name} = Client", ["Client"]),
 		]
 		for f in range(0, len(fixtures)):
 			self.assertEqual(self.parser.split_params(fixtures[f][0]), fixtures[f][1])
@@ -226,6 +232,22 @@ class TestSequenceFunctions(unittest.TestCase):
 							start(One, <<>>, Three) -> ok.
 
 							""", "(${1:One}, ${2:Two}, ${3:Three}) $4"),
+			(('start', '1'),"""
+							start(#client{name=Name} = Client) -> ok.
+
+							""", "(${1:Client}) $2"),
+			(('start', '2'),"""
+							start(Usr, Opts) when is_binary(Usr), is_list(Opts) -> ok.
+
+							""", "(${1:Usr}, ${2:Opts}) $3"),
+			(('start', '1'),"""
+							start( << _:3/bytes,Body/binary >> = Data) -> ok.
+
+							""", "(${1:Data}) $2"),
+			(('start', '2'),"""
+							start(Usr, Opts) when is_binary(Usr), is_list(Opts) -> ok.
+
+							""", "(${1:Usr}, ${2:Opts}) $3"),
 		]
 		for f in range(0, len(fixtures)):
 			self.assertEqual(self.parser.generate_params(fixtures[f][0], fixtures[f][1]), fixtures[f][2])
@@ -234,6 +256,25 @@ class TestSequenceFunctions(unittest.TestCase):
 		fixtures = [
 			("""
 			-export([zero/0, one/1, two/2, three/3, four/4]).
+
+			zero() -> ok.
+			one(One) -> ok.
+			two(Two1, Two2) -> ok.
+			three(Three1, Three2, Three3) -> ok.
+			four(Four1, <<>>, Four3, Four4) -> ok;
+			four(Four1, {Four2A, Four2B, <<>>} = Four2, Four3, Four4) -> ok;
+			""",
+			[
+				('zero/0', 'zero() $1'),
+				('one/1', 'one(${1:One}) $2'),
+				('two/2', 'two(${1:Two1}, ${2:Two2}) $3'),
+				('three/3', 'three(${1:Three1}, ${2:Three2}, ${3:Three3}) $4'),
+				('four/4', 'four(${1:Four1}, ${2:Four2}, ${3:Four3}, ${4:Four4}) $5'),
+			]),
+
+			("""
+			-export([zero/0]).
+			-export([one/1, two/2, three/3, four/4]).
 
 			zero() -> ok.
 			one(One) -> ok.
