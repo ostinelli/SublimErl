@@ -1,4 +1,4 @@
-{ "scope": "source.erlang", "completions": [ "erlang",
+{ "scope": "source.erlang", "completions": [
 { "trigger": "appmon", "contents": "appmon" },
 { "trigger": "appmon_a", "contents": "appmon_a" },
 { "trigger": "appmon_dg", "contents": "appmon_dg" },

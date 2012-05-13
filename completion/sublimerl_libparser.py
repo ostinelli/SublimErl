@@ -78,7 +78,7 @@ class SublimErlLibParser():
 		# write to files: completions
 		f_completions = open("%s.sublime-completions" % dest_file_base, 'wb')
 		if len(completions) > 0:
-			f_completions.write("{ \"scope\": \"source.erlang\", \"completions\": [ \"erlang\",\n" + ',\n'.join(completions) + "\n]}")
+			f_completions.write("{ \"scope\": \"source.erlang\", \"completions\": [\n" + ',\n'.join(completions) + "\n]}")
 		else:
 			f_completions.write("")
 		f_completions.close()
