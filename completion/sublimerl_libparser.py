@@ -71,6 +71,9 @@ class SublimErlLibParser():
 			bif_completions = self.bif_completions()
 			for k in bif_completions.keys():
 				disasms[k].extend(bif_completions[k]) 
+				# sort
+				disasms[k] = sorted(disasms[k], key=lambda k: k[0])
+
 			# erlang completions
 			for c in bif_completions['erlang']:
 				completions.append("{ \"trigger\": \"%s\", \"contents\": \"%s\" }" % (c[0], c[1]))
@@ -97,7 +100,7 @@ class SublimErlLibParser():
 				if len(exports) > 0:
 					all_completions.extend(self.generate_module_completions(module, exports))
 		# return all_completions
-		return all_completions
+		return sorted(all_completions, key=lambda k: k[0])
 
 	def bif_completions(self):
 		return {
@@ -422,11 +425,11 @@ class TestSequenceFunctions(unittest.TestCase):
 			four(Four1, {Four2A, Four2B, <<>>} = Four2, Four3, Four4) -> ok;
 			""",
 			[
-				('zero/0', 'zero() $1'),
-				('one/1', 'one(${1:One}) $2'),
-				('two/2', 'two(${1:Two1}, ${2:Two2}) $3'),
-				('three/3', 'three(${1:Three1}, ${2:Three2}, ${3:Three3}) $4'),
 				('four/4', 'four(${1:Four1}, ${2:Four2}, ${3:Four3}, ${4:Four4}) $5'),
+				('one/1', 'one(${1:One}) $2'),
+				('three/3', 'three(${1:Three1}, ${2:Three2}, ${3:Three3}) $4'),
+				('two/2', 'two(${1:Two1}, ${2:Two2}) $3'),
+				('zero/0', 'zero() $1'),
 			]),
 
 			("""
@@ -441,11 +444,11 @@ class TestSequenceFunctions(unittest.TestCase):
 			four(Four1, {Four2A, Four2B, <<>>} = Four2, Four3, Four4) -> ok;
 			""",
 			[
-				('zero/0', 'zero() $1'),
-				('one/1', 'one(${1:One}) $2'),
-				('two/2', 'two(${1:Two1}, ${2:Two2}) $3'),
-				('three/3', 'three(${1:Three1}, ${2:Three2}, ${3:Three3}) $4'),
 				('four/4', 'four(${1:Four1}, ${2:Four2}, ${3:Four3}, ${4:Four4}) $5'),
+				('one/1', 'one(${1:One}) $2'),
+				('three/3', 'three(${1:Three1}, ${2:Three2}, ${3:Three3}) $4'),
+				('two/2', 'two(${1:Two1}, ${2:Two2}) $3'),
+				('zero/0', 'zero() $1'),
 			])
 		]
 		for f in range(0, len(fixtures)):
