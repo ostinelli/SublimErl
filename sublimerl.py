@@ -213,10 +213,9 @@ class SublimErlLauncher():
 		concatenated_paths = []
 		for file_path in file_paths:
 			if os.path.exists(file_path):
-				p = subprocess.Popen(". %s; env" % file_path, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-				data, stderr = p.communicate()
-				env = dict((line.split("=", 1) for line in data.splitlines()))
-				concatenated_paths.append(env['PATH'].strip())
+				p = subprocess.Popen(". %s; echo $PATH" % file_path, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+				path, stderr = p.communicate()
+				concatenated_paths.append(path.strip())
 		return ''.join(concatenated_paths)
 
 	def get_erlang_module_name(self):
