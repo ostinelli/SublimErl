@@ -463,6 +463,7 @@ class SublimErlTestRunner(SublimErlLauncher):
 			self.log("\n=> NO TESTS TO RUN.\n")
 
 		else:
+			self.log(data)
 			self.log("\n=> TEST(S) FAILED.\n")
 
 	def ct_test(self, module_tests_name):
