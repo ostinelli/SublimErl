@@ -179,13 +179,13 @@ class SublimErlLauncher():
 		self.env = os.environ.copy()
 		# add project root
 		global SUBLIMERL
-		self.env['PATH'] = "%s:%s" % (self.env['PATH'], SUBLIMERL['project_root'])
+		self.env['PATH'] = "%s:%s:" % (self.env['PATH'], SUBLIMERL['project_root'])
 		# TODO: enhance the finding of paths
 		if sublime.platform() == 'osx':
 			# get relevant file paths
 			etc_paths = ['/etc/paths']
 			for f in os.listdir('/etc/paths.d'):
-				etc_paths.append(os.path.abspath(f))
+				etc_paths.append(os.path.join('/etc/paths.d', f))
 			# bash profile
 			bash_profile_path = os.path.join(os.getenv('HOME'), '.bash_profile')
 			# get env paths
@@ -261,6 +261,7 @@ class SublimErlLauncher():
 		global SUBLIMERL
 		if dir_type == 'root': os.chdir(SUBLIMERL['project_root'])
 		elif dir_type == 'test': os.chdir(SUBLIMERL['test_root'])
+
 		# start proc
 		p = subprocess.Popen(os_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, env=self.env)
 		if block == True:
