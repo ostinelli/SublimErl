@@ -60,6 +60,17 @@
     </dict>
     <dict>
       <key>name</key>
+      <string>test warning</string>
+      <key>scope</key>
+      <string>test.warning</string>
+      <key>settings</key>
+      <dict>
+        <key>foreground</key>
+        <string>#d87a00</string>
+      </dict>
+    </dict>
+    <dict>
+      <key>name</key>
       <string>test aborted</string>
       <key>scope</key>
       <string>test.aborted</string>
