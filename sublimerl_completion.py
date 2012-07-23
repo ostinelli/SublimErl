@@ -27,7 +27,7 @@
 # ==========================================================================================================
 
 import sublime, sublime_plugin
-import os, threading, re, fnmatch, pickle
+import os, threading, pickle
 from sublimerl import SublimErlLauncher
 
 # globals
