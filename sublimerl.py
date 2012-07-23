@@ -36,7 +36,8 @@ SUBLIMERL = {
 	'last_test': None,
 	'last_test_type': None,
 	'project_root': None,
-	'test_root': None
+	'test_root': None,
+	'app_name': None
 }
 
 
@@ -130,6 +131,9 @@ class SublimErlLauncher():
 		if self.save_project_roots() == False:
 			self.log_error("This code does not seem to be part of an OTP compilant project.")
 			return
+
+		# save app name (if any)
+		self.save_app_name()
 
 		# set environment
 		self.set_env()
@@ -256,11 +260,31 @@ class SublimErlLauncher():
 		global SUBLIMERL
 		return SUBLIMERL['project_root']
 
+	def save_app_name(self):
+		global SUBLIMERL
+		# get app file
+		src_path = os.path.join(SUBLIMERL['test_root'], 'src')
+		for f in os.listdir(src_path):
+			if f.endswith('.app.src'):
+				app_file_path = os.path.join(src_path, f)
+				SUBLIMERL['app_name'] = self.get_app_name(app_file_path)
+
+	def get_app_name(self, app_file_path):
+		f = open(app_file_path, 'rb')
+		app_desc = f.read()
+		f.close()
+		m = re.search(r"{application,\s*('?[A-Za-z0-9_]+'?)\s*,\s*\[", app_desc)
+		if m:
+			return m.group(1)
+
 	def execute_os_command(self, os_cmd, dir_type=None, block=False):
 		# set dir
 		global SUBLIMERL
 		if dir_type == 'root': os.chdir(SUBLIMERL['project_root'])
 		elif dir_type == 'test': os.chdir(SUBLIMERL['test_root'])
+
+		# print os.getcwd()
+		# print os_cmd
 
 		# start proc
 		p = subprocess.Popen(os_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, env=self.env)
@@ -422,12 +446,16 @@ class SublimErlTestRunner(SublimErlLauncher):
 
 	def compile_eunit_no_run(self):
 		# call rebar to compile -  HACK: passing in a non-existing suite forces rebar to not run the test suite
-		retcode, data = self.execute_os_command('%s eunit suite=sublimerl_unexisting_test' % self.rebar_path, dir_type='test', block=True)
-		if re.search(r"sublimerl_unexisting_test", data) != None:
+		global SUBLIMERL
+		os_cmd = '%s eunit suites=sublimerl_unexisting_test' % self.rebar_path
+		if SUBLIMERL['app_name']: os_cmd += ' apps=%s' % SUBLIMERL['app_name']
+		retcode, data = self.execute_os_command(os_cmd, dir_type='root', block=True)
+
+		if re.search(r"There were no tests to run", data) != None:
 			# expected error returned (due to the hack)
 			return 0
 		# interpret
-		self.interpret_eunit_test_results(retcode, data)
+		self.log(data)
 
 	def run_single_eunit_test(self, module_tests_name, function_name):
 		# build & run erl command
@@ -439,7 +467,10 @@ class SublimErlTestRunner(SublimErlLauncher):
 		self.interpret_eunit_test_results(retcode, data)
 
 	def compile_eunit_run_suite(self, suite):
-		retcode, data = self.execute_os_command('%s eunit suite=%s' % (self.rebar_path, suite), dir_type='test', block=False)
+		global SUBLIMERL
+		os_cmd = '%s eunit suites=%s' % (self.rebar_path, suite)
+		if SUBLIMERL['app_name']: os_cmd += ' apps=%s' % SUBLIMERL['app_name']
+		retcode, data = self.execute_os_command(os_cmd, dir_type='root', block=False)
 		# interpret
 		self.interpret_eunit_test_results(retcode, data)
 
