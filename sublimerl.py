@@ -428,6 +428,10 @@ class SublimErlTestRunner(SublimErlLauncher):
 		SublimErlThread().start()
 
 	def eunit_test(self, module_name, module_tests_name, function_name):
+		# TODO: we currently force rebar to run all tests until rebar supports setting specific tests
+		# see <https://github.com/basho/rebar/pull/250>
+		function_name = None
+
 		if function_name != None:
 			# specific function provided, start single test
 			self.log("Running test \"%s:%s\" for target module \"%s.erl\".\n\n" % (module_tests_name, function_name, module_name))
