@@ -30,7 +30,7 @@ import sublime, sublime_plugin
 import sys, os, re, subprocess, threading, webbrowser
 
 # globals
-SUBLIMERL_VERSION = '0.2'
+SUBLIMERL_VERSION = '0.3-dev'
 
 SUBLIMERL = {
 	'last_test': None,
@@ -147,28 +147,35 @@ class SublimErlLauncher():
 	def get_paths(self):
 		settings = sublime.load_settings('SublimErl.sublime-settings')
 
+		def log(message):
+			print "SublimErl Init Error: %s" % message
+			self.log_error(message)
+
+		def test_path(path):
+			return path != None and os.path.exists(path)
+
 		# rebar
 		self.rebar_path = settings.get('rebar_path', self.get_exe_path('rebar'))
-		if self.rebar_path == None or not os.path.exists(self.rebar_path):
-			self.log_error("Rebar cannot be found, please download and install from <https://github.com/basho/rebar>.")
+		if test_path(self.rebar_path) == False:
+			log("Rebar cannot be found, please download and install from <https://github.com/basho/rebar>.")
 			return
 
 		# erl check
 		self.erl_path = settings.get('erl_path', self.get_exe_path('erl'))
-		if self.erl_path == None or not os.path.exists(self.erl_path):
-			self.log_error("Erlang binary (erl) cannot be found.")
+		if test_path(self.erl_path) == False:
+			log("Erlang binary (erl) cannot be found.")
 			return
 
 		# escript check
 		self.escript_path = settings.get('escript_path', self.get_exe_path('escript'))
-		if self.escript_path == None or not os.path.exists(self.escript_path):
-			self.log_error("Erlang binary (escript) cannot be found.")
+		if test_path(self.escript_path) == False:
+			log("Erlang binary (escript) cannot be found.")
 			return
 
 		# dialyzer check
 		self.dialyzer_path = settings.get('dialyzer_path', self.get_exe_path('dialyzer'))
-		if self.dialyzer_path == None or not os.path.exists(self.dialyzer_path):
-			self.log_error("Erlang Dyalizer cannot be found.")
+		if test_path(self.dialyzer_path) == False:
+			log("Erlang Dyalizer cannot be found.")
 			return
 
 		return True
