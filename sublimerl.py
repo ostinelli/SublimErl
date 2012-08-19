@@ -30,7 +30,7 @@ import sublime, sublime_plugin
 import sys, os, re, subprocess, threading, webbrowser
 
 # globals
-SUBLIMERL_VERSION = '0.3-dev'
+SUBLIMERL_VERSION = '0.3'
 
 SUBLIMERL = {
 	'last_test': None,
@@ -56,7 +56,6 @@ class SublimErlLauncher():
 		self.available = False
 		# paths
 		self.rebar_path = None
-		self.erl_path = None
 		self.escript_path = None
 		self.dialyzer_path = None
 		# test vars
@@ -158,12 +157,6 @@ class SublimErlLauncher():
 		self.rebar_path = settings.get('rebar_path', self.get_exe_path('rebar'))
 		if test_path(self.rebar_path) == False:
 			log("Rebar cannot be found, please download and install from <https://github.com/basho/rebar>.")
-			return
-
-		# erl check
-		self.erl_path = settings.get('erl_path', self.get_exe_path('erl'))
-		if test_path(self.erl_path) == False:
-			log("Erlang binary (erl) cannot be found.")
 			return
 
 		# escript check
@@ -346,13 +339,13 @@ class SublimErlTestRunner(SublimErlLauncher):
 		cursor_position = self.view.sel()[0].a
 
 		# find all regions with a test function definition
-		function_regions = self.view.find_all(r"(%.*)?([a-zA-Z0-9_]*_test_\s*\(\s*\)\s*->[^.]*\.)")
+		function_regions = self.view.find_all(r"(%.*)?([a-zA-Z0-9_]*_test(_)?\s*\(\s*\)\s*->[^.]*\.)")
 
 		# loop regions
 		matching_region = None
 		for region in function_regions:
 			region_content = self.view.substr(region)
-			if not re.match(r"%.*((?:[a-zA-Z0-9_]*)_test_)\s*\(\s*\)\s*->", region_content):
+			if not re.match(r"%.*((?:[a-zA-Z0-9_]*)_test(_)?)\s*\(\s*\)\s*->", region_content):
 				# function is not commented out, is cursor included in region?
 				if region.a <= cursor_position and cursor_position <= region.b:
 					matching_region = region
@@ -361,9 +354,9 @@ class SublimErlTestRunner(SublimErlLauncher):
 		# get function name
 		if matching_region != None:
 			# get function name and arguments
-			m = re.match(r"((?:[a-zA-Z0-9_]*)_test_)\s*\(\s*\)\s*->(?:.|\n)", self.view.substr(matching_region))
+			m = re.match(r"((?:[a-zA-Z0-9_]*)_test(_)?)\s*\(\s*\)\s*->(?:.|\n)", self.view.substr(matching_region))
 			if m != None:
-				return "%s/0" % m.group(1)
+				return m.group(1)
 
 	def start_eunit_test(self):
 		global SUBLIMERL
@@ -435,17 +428,13 @@ class SublimErlTestRunner(SublimErlLauncher):
 		SublimErlThread().start()
 
 	def eunit_test(self, module_name, module_tests_name, function_name):
-		# TODO: we currently force rebar to run all tests until rebar supports setting specific tests
-		# see <https://github.com/basho/rebar/pull/250>
-		function_name = None
-
 		if function_name != None:
 			# specific function provided, start single test
 			self.log("Running test \"%s:%s\" for target module \"%s.erl\".\n\n" % (module_tests_name, function_name, module_name))
 			# compile all source code and test module
 			if self.compile_eunit_no_run() != 0: return
 			# run single test
-			self.run_single_eunit_test(module_tests_name, function_name)
+			self.compile_eunit_run_suite(module_tests_name, function_name)
 		else:
 			# run all test functions in file
 			if module_tests_name != module_name:
@@ -468,19 +457,14 @@ class SublimErlTestRunner(SublimErlLauncher):
 		# interpret
 		self.log(data)
 
-	def run_single_eunit_test(self, module_tests_name, function_name):
-		# build & run erl command
-		mod_function = "%s:%s" % (module_tests_name, function_name)
-		erl_command = "-noshell -pa .eunit -eval \"eunit:test({generator, fun %s})\" -s init stop" % mod_function
-
-		retcode, data = self.execute_os_command('%s %s' % (self.erl_path, erl_command), dir_type='test', block=False)
-		# interpret
-		self.interpret_eunit_test_results(retcode, data)
-
-	def compile_eunit_run_suite(self, suite):
+	def compile_eunit_run_suite(self, suite, function_name=None):
 		global SUBLIMERL
 		os_cmd = '%s eunit suites=%s' % (self.rebar_path, suite)
+		if function_name != None:
+			os_cmd += ' tests=%s' % function_name
 		if SUBLIMERL['app_name']: os_cmd += ' apps=%s' % SUBLIMERL['app_name']
+
+		print "COMMAND: %s" % os_cmd
 		retcode, data = self.execute_os_command(os_cmd, dir_type='root', block=False)
 		# interpret
 		self.interpret_eunit_test_results(retcode, data)

@@ -4,7 +4,6 @@
 	 * If it doesn't succeed or you prefer to manually configure these, you can do so by inputting the paths here.
 	 *
 	 * "rebar_path": "/usr/local/bin/rebar",
-	 * "erl_path": "/usr/local/bin/erl",
 	 * "escript_path": "/usr/local/bin/escript",
 	 * "dialyzer_path": "/usr/local/bin/dialyzer"
 	 */
