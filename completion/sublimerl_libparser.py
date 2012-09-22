@@ -1,11 +1,11 @@
 # ==========================================================================================================
 # SublimErl - A Sublime Text 2 Plugin for Erlang Integrated Testing & Code Completion
-# 
+#
 # Copyright (C) 2012, Roberto Ostinelli <roberto@ostinelli.net>.
 # All rights reserved.
 #
 # BSD License
-# 
+#
 # Redistribution and use in source and binary forms, with or without modification, are permitted provided
 # that the following conditions are met:
 #
@@ -70,7 +70,7 @@ class SublimErlLibParser():
 			# we are generating erlang disasm
 			bif_completions = self.bif_completions()
 			for k in bif_completions.keys():
-				disasms[k].extend(bif_completions[k]) 
+				disasms[k].extend(bif_completions[k])
 				# sort
 				disasms[k] = sorted(disasms[k], key=lambda k: k[0])
 

@@ -75,7 +75,7 @@ To use SublimErl, you need to have:
 
 * The editor [Sublime Text 2](http://www.sublimetext.com/2).
 * [Erlang](http://www.erlang.org/download.html) ( ..obviously ^^_ ).
-* Basho's [Rebar](https://github.com/basho/rebar) built after August 11th, 2012 (which has support for the `tests=` option).
+* Basho's [Rebar](https://github.com/basho/rebar) built after September 13th, 2012 (which has support for the `tests=` option).
 
 To unleash the full power of the plugin, you will also need to comply to:
 
