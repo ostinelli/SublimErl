@@ -44,6 +44,38 @@ SUBLIMERL_COMPLETIONS = {
 	}
 }
 
+# erlang module name completions
+class SUblimErlModuleNameCompletions():
+
+	def set_completions(self):
+		# generate module name completion
+		regex_list = SUBLIMERL.settings.get('completion_skip_erlang_libs', [])
+		class SublimErlThread(threading.Thread):
+			def run(self):
+				# load json
+				f = open(os.path.join(SUBLIMERL.plugin_path, 'completion', 'Erlang-Libs.sublime-completions.full'))
+				file_json = json.load(f)
+				f.close()
+				# filter
+
+				completions = []
+				for m in file_json['completions']:
+					valid = True
+					for regex in regex_list:
+						if re.search(regex, m['trigger']):
+							valid = False
+							break
+					if valid == True: completions.append(m)
+				# generate completion file
+				file_json['completions'] = completions
+				f = open(os.path.join(SUBLIMERL.plugin_path, 'completion', 'Erlang-Libs.sublime-completions'), 'w')
+				f.write(json.dumps(file_json))
+				f.close()
+
+		SublimErlThread().start()
+
+SUblimErlModuleNameCompletions().set_completions()
+
 
 # completions
 class SublimErlCompletions(SublimErlProjectLoader):
@@ -123,6 +155,8 @@ class SublimErlCompletions(SublimErlProjectLoader):
 				os.chdir(SUBLIMERL.completions_path)
 				# start gen
 				this.execute_os_command("python sublimerl_libparser.py %s %s" % (this.shellquote(SUBLIMERL.erlang_libs_path), this.shellquote(dest_file_base)))
+				# rename file to .full
+				os.rename("%s.sublime-completions" % dest_file_base, "%s.sublime-completions.full" % dest_file_base)
 				# save dir information
 				f = open(dirinfo_path, 'wb')
 				pickle.dump(current_erlang_libs, f)

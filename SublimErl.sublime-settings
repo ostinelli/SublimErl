@@ -10,6 +10,10 @@
 
 	 // Skip Erlang libs that match the regex
  	"completion_skip_erlang_libs": [
- 		"^[cC]os[A-Z].+"
+ 		"^[cC]os[A-Z].+",
+ 		".*orber.*",
+ 		"^oe_.+",
+ 		"^megaco_.+",
+ 		".*wx.*"
  	]
 }
