@@ -30,9 +30,9 @@
 SUBLIMERL_VERSION = '0.4-dev'
 
 # imports
-import sublime, sublime_plugin
+import sublime
 import os, subprocess, re, threading, webbrowser
-from sublimerl_core import SUBLIMERL, SublimErlProjectLoader
+from sublimerl_core import SUBLIMERL, SublimErlTextCommand, SublimErlProjectLoader
 
 
 # test runner
@@ -168,7 +168,7 @@ class SublimErlDialyzerTestRunner(SublimErlTestRunner):
 
 	def dialyzer_test(self, module_tests_name, filename):
 		# run dialyzer for file
-		self.log("Running Dialyzer tests for \"%s\".\n" % filename)
+		self.log("Running Dialyzer tests for \"%s\".\n\n" % filename)
 		# compile eunit
 		self.compile_eunit_no_run()
 		# run dialyzer
@@ -374,27 +374,6 @@ class SublimErlTestRunners():
 
 		if test_runner.initialized == False: return
 		test_runner.start_test()
-
-
-# common text command class
-class SublimErlTextCommand(sublime_plugin.TextCommand):
-	def run(self, edit):
-		# run only if context matches
-		if self._context_match(): return self.run_command(edit)
-
-	def _context_match(self):
-		# context matches if lang is source.erlang and if platfomr is not windows
-		caret = self.view.sel()[0].a
-		if 'source.erlang' in self.view.scope_name(caret) and sublime.platform() != 'windows': return True
-		else: return False
-
-	def is_enabled(self):
-		# context menu
-		if self._context_match(): return self.show_contextual_menu()
-
-	def show_contextual_menu(self):
-		# can be overridden
-		return True
 
 
 # dialyzer tests

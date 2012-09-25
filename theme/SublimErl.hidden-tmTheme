@@ -80,6 +80,17 @@
         <string>#d8d000</string>
       </dict>
     </dict>
+    <dict>
+      <key>name</key>
+      <string>test expected</string>
+      <key>scope</key>
+      <string>test.expected</string>
+      <key>settings</key>
+      <dict>
+        <key>foreground</key>
+        <string>#ff9c00</string>
+      </dict>
+    </dict>
   </array>
   <key>uuid</key>
   <string>72174d10-bb12-11e0-962b-111111111356</string>

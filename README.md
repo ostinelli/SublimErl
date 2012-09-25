@@ -19,6 +19,10 @@ Here's a screenshot of SublimErl's **Code Completion** feature:
 
 ![SublimErl screenshot](http://www.ostinelli.net/_out_images/code_completion_full.gif)
 
+Here's a screenshot of SublimErl's **Auto-Indenting** feature:
+
+![SublimErl screenshot](http://www.ostinelli.net/_out_images/sublimerl_indent.gif)
+
 Here's a screenshot of SublimErl **running an Eunit specific test** in file.
 
 ![SublimErl screenshot](http://www.ostinelli.net/_out_images/running_test.jpeg)
@@ -27,6 +31,7 @@ Usage
 -----
 
 * **Code Completion**: Just type and select available options
+* **Auto-Indenting**: hit `Command-Option-L` to auto-intent an entire file
 * Run **single Eunit test**: position your cursor anywhere **within** your test function and hit `Command-Shift-F8`
 * Run **all Eunit test** in file: position your cursor **outside** any test function and hit `Command-Shift-F8`
 * Run **all Common Tests** in file: view the test file and hit `Command-Shift-F8`

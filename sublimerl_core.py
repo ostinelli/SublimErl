@@ -27,7 +27,7 @@
 # ==========================================================================================================
 
 # imports
-import sublime
+import sublime, sublime_plugin
 import os, subprocess, re
 
 # plugin initialized (Sublime might need to be restarted if some env configs / preferences change)
@@ -39,6 +39,9 @@ class SublimErlGlobal():
 		self.init_error = None
 
 		self.plugin_path = None
+		self.completions_path = None
+		self.support_path = None
+
 		self.rebar_path = None
 		self.escript_path = None
 		self.dialyzer_path = None
@@ -50,6 +53,7 @@ class SublimErlGlobal():
 
 		self.env = None
 		self.settings = None
+
 		# initialize
 		self.set_settings()
 		self.set_env()
@@ -126,6 +130,7 @@ class SublimErlGlobal():
 		# paths
 		self.plugin_path = os.path.join(sublime.packages_path(), 'SublimErl')
 		self.completions_path = os.path.join(self.plugin_path, "completion")
+		self.support_path = os.path.join(self.plugin_path, "support")
 
 		return True
 
@@ -143,8 +148,8 @@ class SublimErlGlobal():
 			return data
 
 	def set_erlang_libs_path(self):
-		os.chdir(self.completions_path)
 		# run escript to get erlang lib path
+		os.chdir(self.support_path)
 		escript_command = "sublimerl_utility.erl lib_dir"
 		retcode, data = self.execute_os_command('%s %s' % (self.escript_path, escript_command))
 		self.erlang_libs_path = data
@@ -155,6 +160,10 @@ class SublimErlGlobal():
 		p = subprocess.Popen(os_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, env=self.env)
 		stdout, stderr = p.communicate()
 		return (p.returncode, stdout)
+
+
+	def shellquote(self, s):
+		return "'" + s.replace("'", "'\\''") + "'"
 
 
 # initialize
@@ -243,12 +252,12 @@ class SublimErlProjectLoader():
 		env['PATH'] = "%s:%s:" % (env['PATH'], self.project_root)
 		return env
 
-	def shellquote(self, s):
-		return "'" + s.replace("'", "'\\''") + "'"
-
 	def compile_source(self):
 		# compile to ebin
 		retcode, data = self.execute_os_command('%s compile' % SUBLIMERL.rebar_path, dir_type='project', block=True, log=False)
+
+	def shellquote(self, s):
+		return SUBLIMERL.shellquote(s)
 
 	def execute_os_command(self, os_cmd, dir_type=None, block=False, log=True):
 		# set dir
@@ -269,3 +278,24 @@ class SublimErlProjectLoader():
 				self.log(line)
 				stdout.append(line)
 			return (p.returncode, ''.join(stdout))
+
+
+# common text command class
+class SublimErlTextCommand(sublime_plugin.TextCommand):
+	def run(self, edit):
+		# run only if context matches
+		if self._context_match(): return self.run_command(edit)
+
+	def _context_match(self):
+		# context matches if lang is source.erlang and if platform is not windows
+		caret = self.view.sel()[0].a
+		if 'source.erlang' in self.view.scope_name(caret) and sublime.platform() != 'windows': return True
+		else: return False
+
+	def is_enabled(self):
+		# context menu
+		if self._context_match(): return self.show_contextual_menu()
+
+	def show_contextual_menu(self):
+		# can be overridden
+		return True
