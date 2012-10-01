@@ -6,6 +6,7 @@ Overview
 SublimErl is a plugin for the text editor [Sublime Text 2](http://www.sublimetext.com/2). It allows you to:
 
 * Benefit from **Code Completion** ( all Erlang libs + your current project )
+* Allows you to **Auto-Indent**  your Erlang code
 * Run **Eunit** tests ( all tests from file / single test )
 * Run **Common Tests** ( single file )
 * Run **Dialyzer** tests ( single file )
@@ -21,7 +22,7 @@ Here's a screenshot of SublimErl's **Code Completion** feature:
 
 Here's a screenshot of SublimErl's **Auto-Indenting** feature:
 
-![SublimErl screenshot](http://www.ostinelli.net/_out_images/sublimerl_indent.gif)
+![SublimErl screenshot](http://www.ostinelli.net/_out_images/indenting.gif)
 
 Here's a screenshot of SublimErl **running an Eunit specific test** in file.
 
