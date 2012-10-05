@@ -209,9 +209,9 @@ class SublimErlCompletionsListener(sublime_plugin.EventListener):
 		class SublimErlThread(threading.Thread):
 			def run(self):
 				# compile
-				sublime.set_timeout(completions.compile_source, 0)
+				completions.compile_source(skip_deps=True)
 				# trigger event to reload completions
-				sublime.set_timeout(completions.generate_project_completions, 0)
+				completions.generate_project_completions()
 		SublimErlThread().start()
 
 	# CALLBACK ON VIEW LOADED

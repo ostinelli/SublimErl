@@ -252,9 +252,10 @@ class SublimErlProjectLoader():
 		env['PATH'] = "%s:%s:" % (env['PATH'], self.project_root)
 		return env
 
-	def compile_source(self):
+	def compile_source(self, skip_deps=False):
 		# compile to ebin
-		retcode, data = self.execute_os_command('%s compile' % SUBLIMERL.rebar_path, dir_type='project', block=True, log=False)
+		options = 'skip_deps=true' if skip_deps else ''
+		retcode, data = self.execute_os_command('%s compile %s' % (SUBLIMERL.rebar_path, options), dir_type='project', block=True, log=False)
 
 	def shellquote(self, s):
 		return SUBLIMERL.shellquote(s)
