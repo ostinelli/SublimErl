@@ -27,7 +27,7 @@
 # ==========================================================================================================
 
 # globals
-SUBLIMERL_VERSION = '0.4'
+SUBLIMERL_VERSION = '0.4.1-dev'
 
 # imports
 import sublime

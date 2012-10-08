@@ -45,36 +45,39 @@ SUBLIMERL_COMPLETIONS = {
 }
 
 # erlang module name completions
-class SUblimErlModuleNameCompletions():
+class SublimErlModuleNameCompletions():
 
 	def set_completions(self):
-		# generate module name completion
-		regex_list = SUBLIMERL.settings.get('completion_skip_erlang_libs', [])
+		# load json
+		completions_full_path = os.path.join(SUBLIMERL.plugin_path, 'completion', 'Erlang-Libs.sublime-completions.full')
+		if os.path.exists(completions_full_path):
+			f = open(completions_full_path)
+			file_json = json.load(f)
+			f.close()
+			# filter
+
+			completions = []
+			for m in file_json['completions']:
+				valid = True
+				for regex in SUBLIMERL.completion_skip_erlang_libs:
+					if re.search(regex, m['trigger']):
+						valid = False
+						break
+				if valid == True: completions.append(m)
+			# generate completion file
+			file_json['completions'] = completions
+			f = open(os.path.join(SUBLIMERL.plugin_path, 'completion', 'Erlang-Libs.sublime-completions'), 'w')
+			f.write(json.dumps(file_json))
+			f.close()
+
+	def set_completions_threaded(self):
+		this = self
 		class SublimErlThread(threading.Thread):
 			def run(self):
-				# load json
-				f = open(os.path.join(SUBLIMERL.plugin_path, 'completion', 'Erlang-Libs.sublime-completions.full'))
-				file_json = json.load(f)
-				f.close()
-				# filter
-
-				completions = []
-				for m in file_json['completions']:
-					valid = True
-					for regex in regex_list:
-						if re.search(regex, m['trigger']):
-							valid = False
-							break
-					if valid == True: completions.append(m)
-				# generate completion file
-				file_json['completions'] = completions
-				f = open(os.path.join(SUBLIMERL.plugin_path, 'completion', 'Erlang-Libs.sublime-completions'), 'w')
-				f.write(json.dumps(file_json))
-				f.close()
-
+				this.set_completions()
 		SublimErlThread().start()
 
-SUblimErlModuleNameCompletions().set_completions()
+SublimErlModuleNameCompletions().set_completions_threaded()
 
 
 # completions
@@ -161,8 +164,10 @@ class SublimErlCompletions(SublimErlProjectLoader):
 				f = open(dirinfo_path, 'wb')
 				pickle.dump(current_erlang_libs, f)
 				f.close()
+				# regenerate completions based on options
+				SublimErlModuleNameCompletions().set_completions()
 				# trigger event to reload completions
-				sublime.set_timeout(this.load_erlang_lib_completions, 0)
+				this.load_erlang_lib_completions()
 				this.status("Finished regenerating Erlang lib completions.")
 
 		SublimErlThread().start()
@@ -189,7 +194,7 @@ class SublimErlCompletions(SublimErlProjectLoader):
 				# release lock
 				SUBLIMERL_COMPLETIONS['current_project']['rebuild_in_progress'] = False
 				# trigger event to reload completions
-				sublime.set_timeout(this.load_current_project_completions, 0)
+				this.load_current_project_completions()
 				this.status("Finished regenerating Project completions.")
 
 		SublimErlThread().start()
@@ -225,7 +230,7 @@ class SublimErlCompletionsListener(sublime_plugin.EventListener):
 		class SublimErlThread(threading.Thread):
 			def run(self):
 				# trigger event to reload completions
-				sublime.set_timeout(completions.get_available_completions, 0)
+				completions.get_available_completions()
 		SublimErlThread().start()
 
 	# CALLBACK ON QUERY COMPLETIONS

@@ -53,10 +53,13 @@ class SublimErlGlobal():
 
 		self.env = None
 		self.settings = None
+		self.completion_skip_erlang_libs = None
 
 		# initialize
 		self.set_settings()
 		self.set_env()
+		self.set_completion_skip_erlang_libs()
+
 		if self.set_paths() == True and self.set_erlang_libs_path() == True:
 			# available
 			self.initialized = True
@@ -154,6 +157,9 @@ class SublimErlGlobal():
 		retcode, data = self.execute_os_command('%s %s' % (self.escript_path, escript_command))
 		self.erlang_libs_path = data
 		return self.erlang_libs_path != ''
+
+	def set_completion_skip_erlang_libs(self):
+		self.completion_skip_erlang_libs = self.settings.get('completion_skip_erlang_libs', [])
 
 	def execute_os_command(self, os_cmd):
 		# start proc
