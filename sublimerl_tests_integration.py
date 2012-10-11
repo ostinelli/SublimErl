@@ -250,7 +250,7 @@ class SublimErlEunitTestRunner(SublimErlTestRunner):
 	def eunit_test(self, module_name, module_tests_name, function_name):
 		if function_name != None:
 			# specific function provided, start single test
-			self.log("Running test \"%s:%s\" for target module \"%s.erl\".\n\n" % (module_tests_name, function_name, module_name))
+			self.log("Running test \"%s:%s/0\" for target module \"%s.erl\".\n\n" % (module_tests_name, function_name, module_name))
 			# compile source code and run single test
 			self.compile_eunit_run_suite(module_tests_name, function_name)
 		else:
@@ -316,20 +316,54 @@ class SublimErlCtTestRunner(SublimErlTestRunner):
 		else:
 			module_tests_name = SUBLIMERL.last_test
 
+		# get function name depending on cursor position
+		function_name = self.get_test_function_name()
+
 		# run test
 		this = self
 		class SublimErlThread(threading.Thread):
 			def run(self):
-				this.ct_test(module_tests_name)
+				this.ct_test(module_tests_name, function_name)
 		SublimErlThread().start()
 
-	def ct_test(self, module_tests_name):
-		# run CT for suite
-		self.log("Running tests of Common Tests SUITE \"%s_SUITE.erl\".\n\n" % module_tests_name)
+	def get_test_function_name(self):
+		# get current line position
+		cursor_position = self.view.sel()[0].a
+
+		# find all regions with a test function definition
+		function_regions = self.view.find_all(r"(%.*)?([a-zA-Z0-9_]*\s*\([\w\s_]+\)\s*->[^.]*\.)")
+
+		# loop regions
+		matching_region = None
+		for region in function_regions:
+			region_content = self.view.substr(region)
+			if not re.match(r"%.*((?:[a-zA-Z0-9_]*))\s*\([\w\s_]+\)\s*->", region_content):
+				# function is not commented out, is cursor included in region?
+				if region.a <= cursor_position and cursor_position <= region.b:
+					matching_region = region
+					break
+
+		# get function name
+		if matching_region != None:
+			# get function name and arguments
+			m = re.match(r"((?:[a-zA-Z0-9_]*))\s*\([\w\s_]+\)\s*->(?:.|\n)", self.view.substr(matching_region))
+			if m != None:
+				return m.group(1)
+
+	def ct_test(self, module_tests_name, function_name):
+		if function_name != None:
+			# run CT for suite and case
+			self.log("Running test \"%s/1\" of Common Tests SUITE \"%s_SUITE.erl\".\n\n" % (function_name, module_tests_name))
+			os_cmd = '%s ct suites=%s case=%s' % (SUBLIMERL.rebar_path, module_tests_name, function_name)
+		else:
+			# run CT for suite
+			self.log("Running tests of Common Tests SUITE \"%s_SUITE.erl\".\n\n" % module_tests_name)
+			os_cmd = '%s ct suites=%s' % (SUBLIMERL.rebar_path, module_tests_name)
+
 		# compile all source code
 		self.compile_source()
 		# run suite
-		retcode, data = self.execute_os_command('%s ct suites=%s' % (SUBLIMERL.rebar_path, module_tests_name), dir_type='test', block=False)
+		retcode, data = self.execute_os_command(os_cmd, dir_type='test', block=False)
 		# interpret
 		self.interpret_test_results(retcode, data)
 
