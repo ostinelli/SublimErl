@@ -44,7 +44,7 @@ class SublimErlTestRunner(SublimErlProjectLoader):
 
 		# init
 		self.initialized = False
-		self.panel_name = 'sublimerl'
+		self.panel_name = 'sublimerl_tests'
 		self.panel_buffer = ''
 
 		# don't proceed if a test is already running
@@ -62,9 +62,8 @@ class SublimErlTestRunner(SublimErlProjectLoader):
 
 	def setup_panel(self):
 		self.panel = self.window.get_output_panel(self.panel_name)
-		# TODO: have this set as relative path
-		self.panel.settings().set("syntax", os.path.join(SUBLIMERL.plugin_path, "theme", "SublimErl.hidden-tmLanguage"))
-		self.panel.settings().set("color_scheme", os.path.join(SUBLIMERL.plugin_path, "theme", "SublimErl.hidden-tmTheme"))
+		self.panel.settings().set("syntax", os.path.join(SUBLIMERL.plugin_path, "theme", "SublimErlTests.hidden-tmLanguage"))
+		self.panel.settings().set("color_scheme", os.path.join(SUBLIMERL.plugin_path, "theme", "SublimErlTests.hidden-tmTheme"))
 
 	def update_panel(self):
 		if len(self.panel_buffer):

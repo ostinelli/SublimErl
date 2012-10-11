@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>name</key>
+  <string>SublimErlAutocomplete</string>
+  <key>patterns</key>
+  <array>
+    <dict>
+      <key>comment</key>
+      <string>autocompile description</string>
+      <key>match</key>
+      <string>==> TDD \(compile\)</string>
+      <key>name</key>
+      <string>autocompile.desc</string>
+    </dict>
+    <dict>
+      <key>comment</key>
+      <string>autocompile fail</string>
+      <key>match</key>
+      <string>ERROR: compile failed while processing .*</string>
+      <key>name</key>
+      <string>autocompile.fail</string>
+    </dict>
+  </array>
+  <key>scopeName</key>
+  <string>autocompile.erlang</string>
+  <key>uuid</key>
+  <string>72174d10-bb12-11e0-962b-111111111359</string>
+</dict>
+</plist>

@@ -213,8 +213,6 @@ class SublimErlCompletionsListener(sublime_plugin.EventListener):
 		# compile saved file & reload completions
 		class SublimErlThread(threading.Thread):
 			def run(self):
-				# compile
-				completions.compile_source(skip_deps=True)
 				# trigger event to reload completions
 				completions.generate_project_completions()
 		SublimErlThread().start()

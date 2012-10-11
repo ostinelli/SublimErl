@@ -262,6 +262,7 @@ class SublimErlProjectLoader():
 		# compile to ebin
 		options = 'skip_deps=true' if skip_deps else ''
 		retcode, data = self.execute_os_command('%s compile %s' % (SUBLIMERL.rebar_path, options), dir_type='project', block=True, log=False)
+		return (retcode, data)
 
 	def shellquote(self, s):
 		return SUBLIMERL.shellquote(s)

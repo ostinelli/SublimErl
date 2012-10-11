@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
   <key>comment</key>
-  <string>SublimErl Theme</string>
+  <string>SublimErlTests Theme</string>
   <key>name</key>
-  <string>SublimErl</string>
+  <string>SublimErlTests</string>
   <key>settings</key>
   <array>
     <dict>
