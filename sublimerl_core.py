@@ -26,6 +26,9 @@
 # POSSIBILITY OF SUCH DAMAGE.
 # ==========================================================================================================
 
+# globals
+SUBLIMERL_VERSION = '0.5'
+
 # imports
 import sublime, sublime_plugin
 import os, subprocess, re

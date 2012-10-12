@@ -3,6 +3,6 @@
 	{ "keys": ["ctrl+shift+f9"], "command": "sublim_erl_dialyzer", "context": [{ "key": "selector", "operator": "equal", "operand": "source.erlang" }] },
 	{ "keys": ["ctrl+f8"], "command": "sublim_erl_redo" },
 	{ "keys": ["ctrl+alt+f8"], "command": "sublim_erl_ct_results" },
-	{ "keys": ["ctrl+alt+l"], "command": "sublim_erl_auto_format" },
-	{ "keys": ["ctrl+alt+p"], "command": "sublim_erl_function_search" }
+	{ "keys": ["ctrl+alt+l"], "command": "sublim_erl_auto_format", "context": [{ "key": "selector", "operator": "equal", "operand": "source.erlang" }] },
+	{ "keys": ["ctrl+alt+p"], "command": "sublim_erl_function_search", "context": [{ "key": "selector", "operator": "equal", "operand": "source.erlang" }] }
 ]

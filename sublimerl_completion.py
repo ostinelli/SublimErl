@@ -155,8 +155,9 @@ class SublimErlCompletions(SublimErlProjectLoader):
 				# different erlang libs -> regenerate
 				this.status("Regenerating Erlang lib completions...")
 				# set cwd
-				os.chdir(SUBLIMERL.completions_path)
+				os.chdir(SUBLIMERL.support_path)
 				# start gen
+				print "python sublimerl_libparser.py %s %s" % (this.shellquote(SUBLIMERL.erlang_libs_path), this.shellquote(dest_file_base))
 				this.execute_os_command("python sublimerl_libparser.py %s %s" % (this.shellquote(SUBLIMERL.erlang_libs_path), this.shellquote(dest_file_base)))
 				# rename file to .full
 				os.rename("%s.sublime-completions" % dest_file_base, "%s.sublime-completions.full" % dest_file_base)
@@ -188,7 +189,7 @@ class SublimErlCompletions(SublimErlProjectLoader):
 				# get dir
 				dest_file_base = os.path.join(SUBLIMERL.completions_path, "Current-Project")
 				# set cwd
-				os.chdir(SUBLIMERL.completions_path)
+				os.chdir(SUBLIMERL.support_path)
 				# start gen
 				this.execute_os_command("python sublimerl_libparser.py %s %s" % (this.shellquote(this.project_root), this.shellquote(dest_file_base)))
 				# release lock

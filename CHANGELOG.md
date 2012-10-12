@@ -1,5 +1,9 @@
 # SublimErl Changelog
 
+### 0.5:
+ * added function search
+ * added error panel when compilation errors are encountered
+
 ### 0.4:
  * added auto-indenting
  * major code refactoring

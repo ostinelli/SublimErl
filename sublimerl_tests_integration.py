@@ -26,13 +26,11 @@
 # POSSIBILITY OF SUCH DAMAGE.
 # ==========================================================================================================
 
-# globals
-SUBLIMERL_VERSION = '0.4.1-dev'
 
 # imports
 import sublime
 import os, subprocess, re, threading, webbrowser
-from sublimerl_core import SUBLIMERL, SublimErlTextCommand, SublimErlProjectLoader
+from sublimerl_core import SUBLIMERL_VERSION, SUBLIMERL, SublimErlTextCommand, SublimErlProjectLoader
 
 
 # test runner
@@ -227,13 +225,13 @@ class SublimErlEunitTestRunner(SublimErlTestRunner):
 		cursor_position = self.view.sel()[0].a
 
 		# find all regions with a test function definition
-		function_regions = self.view.find_all(r"(%.*)?([a-zA-Z0-9_]*_test(_)?\s*\(\s*\)\s*->[^.]*\.)")
+		function_regions = self.view.find_all(r"(%.*)?([a-z0-9][a-zA-Z0-9_]*_test(_)?\s*\(\s*\)\s*->[^.]*\.)")
 
 		# loop regions
 		matching_region = None
 		for region in function_regions:
 			region_content = self.view.substr(region)
-			if not re.match(r"%.*((?:[a-zA-Z0-9_]*)_test(_)?)\s*\(\s*\)\s*->", region_content):
+			if not re.match(r"%.*((?:[a-z0-9][a-zA-Z0-9_]*)_test(_)?)\s*\(\s*\)\s*->", region_content):
 				# function is not commented out, is cursor included in region?
 				if region.a <= cursor_position and cursor_position <= region.b:
 					matching_region = region
@@ -242,7 +240,7 @@ class SublimErlEunitTestRunner(SublimErlTestRunner):
 		# get function name
 		if matching_region != None:
 			# get function name and arguments
-			m = re.match(r"((?:[a-zA-Z0-9_]*)_test(_)?)\s*\(\s*\)\s*->(?:.|\n)", self.view.substr(matching_region))
+			m = re.match(r"((?:[a-z0-9][a-zA-Z0-9_]*)_test(_)?)\s*\(\s*\)\s*->(?:.|\n)", self.view.substr(matching_region))
 			if m != None:
 				return m.group(1)
 
@@ -330,13 +328,13 @@ class SublimErlCtTestRunner(SublimErlTestRunner):
 		cursor_position = self.view.sel()[0].a
 
 		# find all regions with a test function definition
-		function_regions = self.view.find_all(r"(%.*)?([a-zA-Z0-9_]*\s*\([\w\s_]+\)\s*->[^.]*\.)")
+		function_regions = self.view.find_all(r"(%.*)?([a-z0-9][a-zA-Z0-9_]*\s*\([\w\s_]+\)\s*->[^.]*\.)")
 
 		# loop regions
 		matching_region = None
 		for region in function_regions:
 			region_content = self.view.substr(region)
-			if not re.match(r"%.*((?:[a-zA-Z0-9_]*))\s*\([\w\s_]+\)\s*->", region_content):
+			if not re.match(r"%.*((?:[a-z0-9][a-zA-Z0-9_]*))\s*\([\w\s_]+\)\s*->", region_content):
 				# function is not commented out, is cursor included in region?
 				if region.a <= cursor_position and cursor_position <= region.b:
 					matching_region = region
@@ -345,7 +343,7 @@ class SublimErlCtTestRunner(SublimErlTestRunner):
 		# get function name
 		if matching_region != None:
 			# get function name and arguments
-			m = re.match(r"((?:[a-zA-Z0-9_]*))\s*\([\w\s_]+\)\s*->(?:.|\n)", self.view.substr(matching_region))
+			m = re.match(r"((?:[a-z0-9][a-zA-Z0-9_]*))\s*\([\w\s_]+\)\s*->(?:.|\n)", self.view.substr(matching_region))
 			if m != None:
 				return m.group(1)
 
