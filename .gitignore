@@ -1,6 +1,7 @@
 *.pyc
 *.cache
 Current-Project.disasm
+Current-Project.searches
 Current-Project.sublime-completions
 
 # OSX

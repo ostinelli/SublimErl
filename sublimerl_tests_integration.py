@@ -443,5 +443,4 @@ class SublimErlCtResultsCommand(SublimErlTextCommand):
 	def show_contextual_menu(self):
 		loader = SublimErlProjectLoader(self.view)
 		index_path = os.path.abspath(os.path.join(loader.project_root, 'logs', 'index.html'))
-		print index_path
 		return os.path.exists(index_path)

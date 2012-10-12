@@ -43,6 +43,7 @@ class SublimErlLibParser():
 	def generate_completions(self, starting_dir, dest_file_base):
 		disasms = {}
 		completions = []
+		searches = []
 		# loop directory
 		rel_dirs = []
 		for root, dirnames, filenames in os.walk(starting_dir):
@@ -60,9 +61,15 @@ class SublimErlLibParser():
 						f = open(filepath, 'r')
 						module = f.read()
 						f.close()
-						module_completions = self.get_completions(module)
+						module_completions, line_numbers = self.get_completions(module)
 						if len(module_completions) > 0:
-							disasms[module_name] = module_completions
+							# set disasm
+							disasms[module_name] = sorted(module_completions, key=lambda k: k[0])
+							# set searches
+							for i in range(0, len(module_completions)):
+								function, completion = module_completions[i]
+								searches.append(("%s:%s" % (module_name, function), filepath, line_numbers[i]))
+							# set module completions
 							completions.append("{ \"trigger\": \"%s\", \"contents\": \"%s\" }" % (module_name, module_name))
 
 		# add BIF completions?
@@ -77,6 +84,12 @@ class SublimErlLibParser():
 			# erlang completions
 			for c in bif_completions['erlang']:
 				completions.append("{ \"trigger\": \"%s\", \"contents\": \"%s\" }" % (c[0], c[1]))
+		else:
+			# we are generating project disasm -> write to files: searches
+			f_searches = open("%s.searches" % dest_file_base, 'wb')
+			pickle.dump(sorted(searches, key=lambda k: k[0]), f_searches)
+			f_searches.close()
+
 		# write to files: disasms
 		f_disasms = open("%s.disasm" % dest_file_base, 'wb')
 		pickle.dump(disasms, f_disasms)
@@ -86,21 +99,25 @@ class SublimErlLibParser():
 		if len(completions) > 0:
 			f_completions.write("{ \"scope\": \"source.erlang\", \"completions\": [\n" + ',\n'.join(completions) + "\n]}")
 		else:
-			f_completions.write("")
+			f_completions.write("{}")
 		f_completions.close()
+
 
 	def get_completions(self, module):
 		# get export portion in code module
 		all_completions = []
+		all_line_numbers = []
 		for m in self.regex['export_section'].finditer(module):
 			export_section = m.groups()[0]
 			if export_section:
 				# get list of exports
 				exports = self.get_code_list_without_comments(export_section)
 				if len(exports) > 0:
-					all_completions.extend(self.generate_module_completions(module, exports))
+					completions, line_numbers = self.generate_module_completions(module, exports)
+					all_completions.extend(completions)
+					all_line_numbers.extend(line_numbers)
 		# return all_completions
-		return sorted(all_completions, key=lambda k: k[0])
+		return (all_completions, all_line_numbers)
 
 	def bif_completions(self):
 		return {
@@ -252,36 +269,44 @@ class SublimErlLibParser():
 
 	def generate_module_completions(self, module, exports):
 		completions = []
+		line_numbers = []
 		for export in exports:
 			# split param count definition
 			fun = export.split('/')
 			if len(fun) == 2:
-				params = self.generate_params(fun, module)
+				params, lineno = self.generate_params(fun, module)
 				if params != None:
 					completions.append((export, '%s%s' % (fun[0].strip(), params)))
-		return completions
+					line_numbers.append(lineno)
+		return (completions, line_numbers)
 
 	def generate_params(self, fun, module):
 		# get params count
 		arity = int(fun[1])
 		# init
 		current_params = []
+		lineno = 0
 		# get params
 		regex = re.compile(r"%s\((.*)\)" % fun[0], re.MULTILINE)
 		for m in regex.finditer(module):
 			params = m.groups()[0]
-			# ensure there's no 'when'
-			params = params.split(')')[0]
-			params = self.split_params(params)
-			if len(params) == arity:
-				# function definition has the correct arity
-				if current_params != []:
-					for i in range(0, len(params)):
-						if current_params[i] == '*' and self.regex['varname'].search(params[i]):
-							# found a valid variable name
-							current_params[i] = params[i]
-				else:
-					current_params = params
+			# if this is a not a spec definition
+			spec_def_pos = module.rfind('-spec', 0, m.start())
+			if spec_def_pos == -1 or len(module[spec_def_pos + 5:m.start()].strip()) > 0:
+				# ensure there's no 'when'
+				params = params.split(')')[0]
+				params = self.split_params(params)
+				if len(params) == arity:
+					# get match line number
+					if lineno == 0: lineno = module.count('\n', 0, m.start()) + 1
+					# function definition has the correct arity
+					if current_params != []:
+						for i in range(0, len(params)):
+							if current_params[i] == '*' and self.regex['varname'].search(params[i]):
+								# found a valid variable name
+								current_params[i] = params[i]
+					else:
+						current_params = params
 		# ensure current params have variable names
 		for i in range(0, len(current_params)):
 			if current_params[i] == '*':
@@ -289,7 +314,7 @@ class SublimErlLibParser():
 			else:
 				current_params[i] = '${%d:%s}' % (i + 1, current_params[i])
 		# return
-		return '(' + ', '.join(current_params) + ') $%d' % (len(current_params) + 1)
+		return ('(' + ', '.join(current_params) + ') $%d' % (len(current_params) + 1), lineno)
 
 	def split_params(self, params):
 		# replace content of graffles with *
@@ -359,55 +384,59 @@ class TestSequenceFunctions(unittest.TestCase):
 			(('start', '3'),"""
 							start(One, Two, Three) -> ok.
 
-							""", "(${1:One}, ${2:Two}, ${3:Three}) $4"),
+							""", ("(${1:One}, ${2:Two}, ${3:Three}) $4", 2)),
 			(('start', '3'),"""
 							start(One, <<>>, Three) -> ok;
 							start(One, Two, Three) -> ok.
 
-							""", "(${1:One}, ${2:Two}, ${3:Three}) $4"),
+							""", ("(${1:One}, ${2:Two}, ${3:Three}) $4", 2)),
 			(('start', '3'),"""
 							start(One, {Abc, Cde}, Three) -> ok;
 							start(One, Two, Three) -> ok.
 
-							""", "(${1:One}, ${2:Two}, ${3:Three}) $4"),
+							""", ("(${1:One}, ${2:Two}, ${3:Three}) $4", 2)),
 			(('start', '3'),"""
 							start(One, <<Abc:16/binary, Cde/binary>>, Three) -> ok
 
-							""", "(${1:One}, ${2:Param2}, ${3:Three}) $4"),
+							""", ("(${1:One}, ${2:Param2}, ${3:Three}) $4", 2)),
 			(('start', '3'),"""
 							start(One, [Abc|R] = Two, Three) -> ok
 
-							""", "(${1:One}, ${2:Two}, ${3:Three}) $4"),
+							""", ("(${1:One}, ${2:Two}, ${3:Three}) $4", 2)),
 			(('start', '3'),"""
 							start(One, [Abc|R], Three) -> ok
 
-							""", "(${1:One}, ${2:Param2}, ${3:Three}) $4"),
+							""", ("(${1:One}, ${2:Param2}, ${3:Three}) $4", 2)),
 			(('start', '3'),"""
 							start(One, [Abc, R], Three) -> ok
 
-							""", "(${1:One}, ${2:Param2}, ${3:Three}) $4"),
+							""", ("(${1:One}, ${2:Param2}, ${3:Three}) $4", 2)),
 			(('start', '3'),"""
 							start(One, Two, Three, Four) -> ok.
 							start(One, {Abc, Cde} = Two, Three) -> ok;
 							start(One, <<>>, Three) -> ok.
 
-							""", "(${1:One}, ${2:Two}, ${3:Three}) $4"),
+							""", ("(${1:One}, ${2:Two}, ${3:Three}) $4", 3)),
+			(('start', '0'),"""
+							-spec start() -> ok.
+							start() -> ok;
+							""", ("() $1", 3)),
 			(('start', '1'),"""
 							start(#client{name=Name} = Client) -> ok.
 
-							""", "(${1:Client}) $2"),
+							""", ("(${1:Client}) $2", 2)),
 			(('start', '2'),"""
 							start(Usr, Opts) when is_binary(Usr), is_list(Opts) -> ok.
 
-							""", "(${1:Usr}, ${2:Opts}) $3"),
+							""", ("(${1:Usr}, ${2:Opts}) $3", 2)),
 			(('start', '1'),"""
 							start( << _:3/bytes,Body/binary >> = Data) -> ok.
 
-							""", "(${1:Data}) $2"),
+							""", ("(${1:Data}) $2", 2)),
 			(('start', '2'),"""
 							start(Usr, Opts) when is_binary(Usr), is_list(Opts) -> ok.
 
-							""", "(${1:Usr}, ${2:Opts}) $3"),
+							""", ("(${1:Usr}, ${2:Opts}) $3", 2)),
 		]
 		for f in range(0, len(fixtures)):
 			self.assertEqual(self.parser.generate_params(fixtures[f][0], fixtures[f][1]), fixtures[f][2])
@@ -424,13 +453,13 @@ class TestSequenceFunctions(unittest.TestCase):
 			four(Four1, <<>>, Four3, Four4) -> ok;
 			four(Four1, {Four2A, Four2B, <<>>} = Four2, Four3, Four4) -> ok;
 			""",
-			[
-				('four/4', 'four(${1:Four1}, ${2:Four2}, ${3:Four3}, ${4:Four4}) $5'),
-				('one/1', 'one(${1:One}) $2'),
-				('three/3', 'three(${1:Three1}, ${2:Three2}, ${3:Three3}) $4'),
-				('two/2', 'two(${1:Two1}, ${2:Two2}) $3'),
+			([
 				('zero/0', 'zero() $1'),
-			]),
+				('one/1', 'one(${1:One}) $2'),
+				('two/2', 'two(${1:Two1}, ${2:Two2}) $3'),
+				('three/3', 'three(${1:Three1}, ${2:Three2}, ${3:Three3}) $4'),
+				('four/4', 'four(${1:Four1}, ${2:Four2}, ${3:Four3}, ${4:Four4}) $5')
+			], [4, 5, 6, 7, 8])),
 
 			("""
 			-export([zero/0]).
@@ -443,13 +472,13 @@ class TestSequenceFunctions(unittest.TestCase):
 			four(Four1, <<>>, Four3, Four4) -> ok;
 			four(Four1, {Four2A, Four2B, <<>>} = Four2, Four3, Four4) -> ok;
 			""",
-			[
-				('four/4', 'four(${1:Four1}, ${2:Four2}, ${3:Four3}, ${4:Four4}) $5'),
-				('one/1', 'one(${1:One}) $2'),
-				('three/3', 'three(${1:Three1}, ${2:Three2}, ${3:Three3}) $4'),
-				('two/2', 'two(${1:Two1}, ${2:Two2}) $3'),
+			([
 				('zero/0', 'zero() $1'),
-			])
+				('one/1', 'one(${1:One}) $2'),
+				('two/2', 'two(${1:Two1}, ${2:Two2}) $3'),
+				('three/3', 'three(${1:Three1}, ${2:Three2}, ${3:Three3}) $4'),
+				('four/4', 'four(${1:Four1}, ${2:Four2}, ${3:Four3}, ${4:Four4}) $5')
+			], [5, 6, 7, 8, 9]))
 		]
 		for f in range(0, len(fixtures)):
 			self.assertEqual(self.parser.get_completions(fixtures[f][0]), fixtures[f][1])
