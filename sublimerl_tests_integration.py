@@ -118,6 +118,7 @@ class SublimErlTestRunner(SublimErlProjectLoader):
 
 	def reset_last_test(self):
 		global SUBLIMERL
+
 		SUBLIMERL.last_test = None
 		SUBLIMERL.last_test_type = None
 

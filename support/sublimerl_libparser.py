@@ -31,6 +31,7 @@ import sys, re, os, fnmatch, pickle, string, unittest
 class SublimErlLibParser():
 
 	def __init__(self):
+		# compile default regexes
 		self.regex = {
 			'all': re.compile(r"(.*)", re.MULTILINE),
 			'export_section': re.compile(r"^\s*-\s*export\s*\(\s*\[\s*([^\]]*)\s*\]\s*\)\s*\.", re.DOTALL + re.MULTILINE),
@@ -41,6 +42,7 @@ class SublimErlLibParser():
 		}
 
 	def generate_completions(self, starting_dir, dest_file_base):
+		# init
 		disasms = {}
 		completions = []
 		searches = []
@@ -48,8 +50,9 @@ class SublimErlLibParser():
 		rel_dirs = []
 		for root, dirnames, filenames in os.walk(starting_dir):
 			if 'reltool.config' in filenames:
-				# find a release directory, ignore autocompletion for these files
+				# found a release directory, we will ignore autocompletion for these files
 				rel_dirs.append(root)
+			# loop filenames ending in .erl
 			for filename in fnmatch.filter(filenames, r"*.erl"):
 				if 'src' in root.split('/'):
 					# source file in a src directory
@@ -58,9 +61,11 @@ class SublimErlLibParser():
 					if not (True in [filepath.find(rel_dir) != -1 for rel_dir in rel_dirs]):
 						# not in a release directory, get module name
 						module_name, module_ext = os.path.splitext(filename)
+						# get module content
 						f = open(filepath, 'r')
 						module = f.read()
 						f.close()
+						# get completions
 						module_completions, line_numbers = self.get_completions(module)
 						if len(module_completions) > 0:
 							# set disasm
@@ -80,7 +85,6 @@ class SublimErlLibParser():
 				disasms[k].extend(bif_completions[k])
 				# sort
 				disasms[k] = sorted(disasms[k], key=lambda k: k[0])
-
 			# erlang completions
 			for c in bif_completions['erlang']:
 				completions.append("{ \"trigger\": \"%s\", \"contents\": \"%s\" }" % (c[0], c[1]))
@@ -102,9 +106,9 @@ class SublimErlLibParser():
 			f_completions.write("{}")
 		f_completions.close()
 
-
 	def get_completions(self, module):
 		# get export portion in code module
+
 		all_completions = []
 		all_line_numbers = []
 		for m in self.regex['export_section'].finditer(module):
@@ -113,6 +117,7 @@ class SublimErlLibParser():
 				# get list of exports
 				exports = self.get_code_list_without_comments(export_section)
 				if len(exports) > 0:
+					# add to existing completions
 					completions, line_numbers = self.generate_module_completions(module, exports)
 					all_completions.extend(completions)
 					all_line_numbers.extend(line_numbers)
@@ -120,6 +125,7 @@ class SublimErlLibParser():
 		return (all_completions, all_line_numbers)
 
 	def bif_completions(self):
+		# default BIFs not available in modules
 		return {
 			'erlang': [
 				('abs/1', 'abs(${1:Number}) $2'),
@@ -248,19 +254,25 @@ class SublimErlLibParser():
 		}
 
 	def generate_module_completions(self, module, exports):
+		# get exports for a module
+
 		completions = []
 		line_numbers = []
 		for export in exports:
 			# split param count definition
 			fun = export.split('/')
 			if len(fun) == 2:
+				# get params
 				params, lineno = self.generate_params(fun, module)
 				if params != None:
+					# add
 					completions.append((export, '%s%s' % (fun[0].strip(), params)))
 					line_numbers.append(lineno)
 		return (completions, line_numbers)
 
 	def generate_params(self, fun, module):
+		# generate params for a specific function name
+
 		# get params count
 		arity = int(fun[1])
 		# init
@@ -270,23 +282,25 @@ class SublimErlLibParser():
 		regex = re.compile(r"%s\((.*)\)\s*->" % fun[0], re.MULTILINE)
 		for m in regex.finditer(module):
 			params = m.groups()[0]
-			# ensure there's no 'when'
+			# strip out the eventual condition part ('when')
 			params = params.split('when')[0].strip()
 			if params[-1:] == ')': params = params[:-1]
 			# split
 			params = self.split_params(params)
 			if len(params) == arity:
+				# function definition has the correct arity
 				# get match line number if this is not a -spec line
 				spec_def_pos = module.rfind('-spec', 0, m.start())
 				not_a_spec_definition = spec_def_pos == -1 or len(module[spec_def_pos + 5:m.start()].strip()) > 0
 				if not_a_spec_definition and lineno == 0: lineno = module.count('\n', 0, m.start()) + 1
-				# function definition has the correct arity
+				# add to params
 				if current_params != []:
 					for i in range(0, len(params)):
 						if current_params[i] == '*' and self.regex['varname'].search(params[i]):
 							# found a valid variable name
 							current_params[i] = params[i]
 				else:
+					# init params
 					current_params = params
 		# ensure current params have variable names
 		for i in range(0, len(current_params)):
@@ -298,6 +312,8 @@ class SublimErlLibParser():
 		return ('(' + ', '.join(current_params) + ') $%d' % (len(current_params) + 1), lineno)
 
 	def split_params(self, params):
+		# return list of params, with proper variable name or wildcard if invalid
+
 		# replace content of graffles with *
 		params = self.regex['{'].sub("*", params)
 		# replace content of <<>> with *

@@ -44,10 +44,13 @@ class SublimErlFunctionSearch():
 		self.search_completions = []
 
 	def show(self):
+		# get completions
 		self.set_search_completions()
+		# strip out just the function name to be displayed
 		completions = []
 		for name, filepath, lineno in self.search_completions:
 			completions.append(name)
+		# open quick panel
 		sublime.active_window().show_quick_panel(completions, self.on_select)
 
 	def set_search_completions(self):
@@ -61,6 +64,7 @@ class SublimErlFunctionSearch():
 	def on_select(self, index):
 		# get file and line
 		name, filepath, lineno = self.search_completions[index]
+		# open module at function position
 		self.open_file_and_goto_line(filepath, lineno)
 
 	def open_file_and_goto_line(self, filepath, line):
