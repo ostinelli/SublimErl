@@ -4,5 +4,6 @@
 	{ "keys": ["super+f8"], "command": "sublim_erl_redo" },
 	{ "keys": ["super+alt+f8"], "command": "sublim_erl_ct_results" },
 	{ "keys": ["super+alt+l"], "command": "sublim_erl_auto_format", "context": [{ "key": "selector", "operator": "equal", "operand": "source.erlang" }] },
-	{ "keys": ["super+alt+p"], "command": "sublim_erl_function_search", "context": [{ "key": "selector", "operator": "equal", "operand": "source.erlang" }] }
+	{ "keys": ["super+alt+p"], "command": "sublim_erl_function_search", "context": [{ "key": "selector", "operator": "equal", "operand": "source.erlang" }] },
+	{ "keys": ["super+alt+i"], "command": "sublim_erl_man", "context": [{ "key": "selector", "operator": "equal", "operand": "source.erlang" }] }
 ]

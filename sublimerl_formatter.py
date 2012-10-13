@@ -63,7 +63,7 @@ class SublimErlAutoFormat():
 			self.view.show(current_region)
 
 
-# repeat last test
+# format command
 class SublimErlAutoFormatCommand(SublimErlTextCommand):
 	def run_command(self, edit):
 		formatter = SublimErlAutoFormat(self.view, edit)

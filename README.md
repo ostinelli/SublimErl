@@ -11,6 +11,7 @@ SublimErl is a plugin for the text editor [Sublime Text 2](http://www.sublimetex
 * Run **Common Tests** ( all tests for module / single test )
 * Run **Dialyzer** tests ( single module )
 * **Goto any exported function** of your project easily
+* Access **man pages** from the text editor
 
 All within your test editor.
 
@@ -39,7 +40,8 @@ Usage
 * Run **Dialyzer** on file: view the file and hit `Command-Shift-F9`
 * Re-Run the **previous test**: hit `Command-F8` ( you do not need to be viewing the test to launch it )
 * View **Common Tests results** in browser: hit `Command-Option-F8` (OSX) | `Command-Alt-F8` (Linux/Win)
-* **Goto any exported function** of your project easily: hit `Command-Option-P` (OSX) | `Command-Alt-P` (Linux/Win) and select a function
+* **Goto any exported function** of your project easily: hit `Command-Option-p` (OSX) | `Command-Alt-p` (Linux/Win) and select a function
+* To access **man pages**: hit `Command-Option-i` (OSX) | `Command-Alt-i` (Linux/Win) and select a module
 
 A brief introduction video can be seen [here](http://www.youtube.com/watch?v=T0rD0CQM4Yg):
 
@@ -83,6 +85,7 @@ To use SublimErl, you need to have:
 * The editor [Sublime Text 2](http://www.sublimetext.com/2).
 * [Erlang](http://www.erlang.org/download.html) ( ..obviously ^^_ ).
 * Basho's [Rebar](https://github.com/basho/rebar) built after September 13th, 2012 (which has support for the `tests=` option).
+* (optional) [Erlang man pages](http://www.erlang.org/download.html) if you use this functionality.
 
 To unleash the full power of the plugin, you will also need to comply to:
 

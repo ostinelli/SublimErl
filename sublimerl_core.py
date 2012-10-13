@@ -45,8 +45,9 @@ class SublimErlGlobal():
 		self.completions_path = None
 		self.support_path = None
 
-		self.rebar_path = None
+		self.erl_path = None
 		self.escript_path = None
+		self.rebar_path = None
 		self.dialyzer_path = None
 		self.erlang_libs_path = None
 
@@ -115,16 +116,21 @@ class SublimErlGlobal():
 		def test_path(path):
 			return path != None and os.path.exists(path)
 
-		# rebar
-		self.rebar_path = self.settings.get('rebar_path', self.get_exe_path('rebar'))
-		if test_path(self.rebar_path) == False:
-			log("Rebar cannot be found, please download and install from <https://github.com/basho/rebar>.")
-			return False
+		# erl check
+		self.erl_path = self.settings.get('erl_path', self.get_exe_path('erl'))
+		if test_path(self.erl_path) == False:
+			log("Erlang binary (erl) cannot be found.")
 
 		# escript check
 		self.escript_path = self.settings.get('escript_path', self.get_exe_path('escript'))
 		if test_path(self.escript_path) == False:
 			log("Erlang binary (escript) cannot be found.")
+
+		# rebar
+		self.rebar_path = self.settings.get('rebar_path', self.get_exe_path('rebar'))
+		if test_path(self.rebar_path) == False:
+			log("Rebar cannot be found, please download and install from <https://github.com/basho/rebar>.")
+			return False
 			return False
 
 		# dialyzer check
