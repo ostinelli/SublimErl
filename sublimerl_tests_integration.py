@@ -265,6 +265,7 @@ class SublimErlEunitTestRunner(SublimErlTestRunner):
 		if function_name != None:
 			os_cmd += ' tests=%s' % function_name
 		if self.app_name: os_cmd += ' apps=%s' % self.app_name
+
 		retcode, data = self.execute_os_command(os_cmd, dir_type='project', block=False)
 		# interpret
 		self.interpret_test_results(retcode, data)
@@ -396,7 +397,7 @@ class SublimErlTestRunners():
 		if test_runner.initialized == False: return
 		test_runner.start_test()
 
-	def ct_or_eunit_test(self, view):
+	def ct_or_eunit_test(self, view, new=True):
 		if SUBLIMERL.get_erlang_module_name(view).find("_SUITE") != -1:
 			# ct
 			test_runner = SublimErlCtTestRunner(view)
@@ -405,7 +406,7 @@ class SublimErlTestRunners():
 			test_runner = SublimErlEunitTestRunner(view)
 
 		if test_runner.initialized == False: return
-		test_runner.start_test()
+		test_runner.start_test(new=new)
 
 
 # dialyzer tests
@@ -424,8 +425,8 @@ class SublimErlTestCommand(SublimErlTextCommand):
 class SublimErlRedoCommand(SublimErlTextCommand):
 	def run_command(self, edit):
 		# init
-		if SUBLIMERL.last_test_type == 'dialyzer': SublimErlTestRunners().dialyzer_test(self.view)
-		elif SUBLIMERL.last_test_type == 'eunit' or SUBLIMERL.last_test_type == 'ct': SublimErlTestRunners().ct_or_eunit_test(self.view)
+		if SUBLIMERL.last_test_type == 'dialyzer': SublimErlTestRunners().dialyzer_test(self.view, new=False)
+		elif SUBLIMERL.last_test_type == 'eunit' or SUBLIMERL.last_test_type == 'ct': SublimErlTestRunners().ct_or_eunit_test(self.view, new=False)
 
 	def show_contextual_menu(self):
 		return SUBLIMERL.last_test != None
