@@ -10,7 +10,7 @@ SublimErl is a plugin for the text editor [Sublime Text 2](http://www.sublimetex
 * Run **Eunit** tests ( all tests for module / single test )
 * Run **Common Tests** ( all tests for module / single test )
 * Run **Dialyzer** tests ( single module )
-* Goto any function of your project easily
+* **Goto any exported function** of your project easily
 
 All within your test editor.
 
@@ -39,7 +39,7 @@ Usage
 * Run **Dialyzer** on file: view the file and hit `Command-Shift-F9`
 * Re-Run the **previous test**: hit `Command-F8` ( you do not need to be viewing the test to launch it )
 * View **Common Tests results** in browser: hit `Command-Option-F8` (OSX) | `Command-Alt-F8` (Linux/Win)
-* Goto any function of your project easily: git `Command-Option-P` (OSX) | `Command-Alt-P` (Linux/Win) and select a function
+* **Goto any exported function** of your project easily: hit `Command-Option-P` (OSX) | `Command-Alt-P` (Linux/Win) and select a function
 
 A brief introduction video can be seen [here](http://www.youtube.com/watch?v=T0rD0CQM4Yg):
 
