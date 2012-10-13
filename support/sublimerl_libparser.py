@@ -287,26 +287,27 @@ class SublimErlLibParser():
 		current_params = []
 		lineno = 0
 		# get params
-		regex = re.compile(r"%s\((.*)\)" % fun[0], re.MULTILINE)
+		regex = re.compile(r"%s\((.*)\)\s*->" % fun[0], re.MULTILINE)
 		for m in regex.finditer(module):
 			params = m.groups()[0]
-			# if this is a not a spec definition
-			spec_def_pos = module.rfind('-spec', 0, m.start())
-			if spec_def_pos == -1 or len(module[spec_def_pos + 5:m.start()].strip()) > 0:
-				# ensure there's no 'when'
-				params = params.split(')')[0]
-				params = self.split_params(params)
-				if len(params) == arity:
-					# get match line number
-					if lineno == 0: lineno = module.count('\n', 0, m.start()) + 1
-					# function definition has the correct arity
-					if current_params != []:
-						for i in range(0, len(params)):
-							if current_params[i] == '*' and self.regex['varname'].search(params[i]):
-								# found a valid variable name
-								current_params[i] = params[i]
-					else:
-						current_params = params
+			# ensure there's no 'when'
+			params = params.split('when')[0].strip()
+			if params[-1:] == ')': params = params[:-1]
+			# split
+			params = self.split_params(params)
+			if len(params) == arity:
+				# get match line number if this is not a -spec line
+				spec_def_pos = module.rfind('-spec', 0, m.start())
+				not_a_spec_definition = spec_def_pos == -1 or len(module[spec_def_pos + 5:m.start()].strip()) > 0
+				if not_a_spec_definition and lineno == 0: lineno = module.count('\n', 0, m.start()) + 1
+				# function definition has the correct arity
+				if current_params != []:
+					for i in range(0, len(params)):
+						if current_params[i] == '*' and self.regex['varname'].search(params[i]):
+							# found a valid variable name
+							current_params[i] = params[i]
+				else:
+					current_params = params
 		# ensure current params have variable names
 		for i in range(0, len(current_params)):
 			if current_params[i] == '*':
@@ -330,6 +331,8 @@ class SublimErlLibParser():
 			splitted_param = params[p].split('=')
 			if len(splitted_param) > 1:
 				params[p] = splitted_param[1].strip()
+			# spit on :: for spec declarations
+			params[p] = params[p].split('::')[0]
 			# convert to * where necessary
 			if not self.regex['varname'].search(params[p]):
 				params[p] = '*'
@@ -465,9 +468,10 @@ class TestSequenceFunctions(unittest.TestCase):
 			-export([zero/0]).
 			-export([one/1, two/2, three/3, four/4]).
 
-			zero() -> ok.
+			zero() -> three(Three1wrong, Three2wrong, Three3wrong).
 			one(One) -> ok.
 			two(Two1, Two2) -> ok.
+			-spec three(ThreeParam1::list(), ThreeParam2::list(), ThreeParam3::atom()) -> ok.
 			three(Three1, Three2, Three3) -> ok.
 			four(Four1, <<>>, Four3, Four4) -> ok;
 			four(Four1, {Four2A, Four2B, <<>>} = Four2, Four3, Four4) -> ok;
@@ -476,9 +480,9 @@ class TestSequenceFunctions(unittest.TestCase):
 				('zero/0', 'zero() $1'),
 				('one/1', 'one(${1:One}) $2'),
 				('two/2', 'two(${1:Two1}, ${2:Two2}) $3'),
-				('three/3', 'three(${1:Three1}, ${2:Three2}, ${3:Three3}) $4'),
+				('three/3', 'three(${1:ThreeParam1}, ${2:ThreeParam2}, ${3:ThreeParam3}) $4'),
 				('four/4', 'four(${1:Four1}, ${2:Four2}, ${3:Four3}, ${4:Four4}) $5')
-			], [5, 6, 7, 8, 9]))
+			], [5, 6, 7, 9, 10]))
 		]
 		for f in range(0, len(fixtures)):
 			self.assertEqual(self.parser.get_completions(fixtures[f][0]), fixtures[f][1])
