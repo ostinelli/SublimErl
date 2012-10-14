@@ -146,6 +146,10 @@ class SublimErlGlobal():
 
 		return True
 
+	def strip_comments(self, code):
+		# strip comments but keep the same character count
+		return re.sub(re.compile(r"%(.*)\n"), lambda m: (len(m.group(0)) - 1) * ' ' + '\n', code)
+
 	def get_erlang_module_name(self, view):
 		# find module declaration and get module name
 		module_region = view.find(r"^\s*-\s*module\s*\(\s*(?:[a-zA-Z0-9_]+)\s*\)\s*\.", 0)

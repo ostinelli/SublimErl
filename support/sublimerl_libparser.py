@@ -41,6 +41,10 @@ class SublimErlLibParser():
 			'[': re.compile(r"\[.*\]")
 		}
 
+	def strip_comments(self, code):
+		# strip comments but keep the same character count
+		return re.sub(re.compile(r"%(.*)\n"), lambda m: (len(m.group(0)) - 1) * ' ' + '\n', code)
+
 	def generate_completions(self, starting_dir, dest_file_base):
 		# init
 		disasms = {}
@@ -63,7 +67,7 @@ class SublimErlLibParser():
 						module_name, module_ext = os.path.splitext(filename)
 						# get module content
 						f = open(filepath, 'r')
-						module = f.read()
+						module = self.strip_comments(f.read())
 						f.close()
 						# get completions
 						module_completions, line_numbers = self.get_completions(module)
@@ -115,7 +119,7 @@ class SublimErlLibParser():
 			export_section = m.groups()[0]
 			if export_section:
 				# get list of exports
-				exports = self.get_code_list_without_comments(export_section)
+				exports = self.get_code_list(export_section)
 				if len(exports) > 0:
 					# add to existing completions
 					completions, line_numbers = self.generate_module_completions(module, exports)
@@ -321,7 +325,7 @@ class SublimErlLibParser():
 		# replace content of [] with *
 		params = self.regex['['].sub("*", params)
 		# take away comments and split per line
-		params = self.get_code_list_without_comments(params)
+		params = self.get_code_list(params)
 		for p in range(0, len(params)):
 			# split on =
 			splitted_param = params[p].split('=')
@@ -335,16 +339,15 @@ class SublimErlLibParser():
 		# return
 		return params
 
-	def get_code_list_without_comments(self, code):
+	def get_code_list(self, code):
 		# loop every line and add code lines
 		cleaned_code_list = []
 		for m in self.regex['all'].finditer(code):
 			groups = m.groups()
 			for i in range(0, len(groups)):
-				# strip away code comments
-				code_line = groups[i].strip().split('%')
-				if len(code_line[0]) > 0:
-					code_lines = code_line[0].split(',')
+				code_line = groups[i].strip()
+				if len(code_line) > 0:
+					code_lines = code_line.split(',')
 					for code_line in code_lines:
 						code_line = code_line.strip()
 						if len(code_line) > 0:
@@ -367,12 +370,6 @@ class TestSequenceFunctions(unittest.TestCase):
 			("One, {TwoA, TwoB, {TwoC, TwoD}}, Three", ["One", "*", "Three"]),
 			("One, {TwoA, TwoB, {TwoC, TwoD}} = Two, Three", ["One", "Two", "Three"]),
 			("One, {TwoA, TwoB, {TwoC, TwoD} = TwoE} = Two, Three", ["One", "Two", "Three"]),
-			("""% comment here
-				One,  % param one
-				Two,  % param two
-
-				Three % param three
-			 """, ["One", "Two", "Three"]),
 			("#client{name=Name} = Client", ["Client"]),
 		]
 		for f in range(0, len(fixtures)):

@@ -225,25 +225,14 @@ class SublimErlEunitTestRunner(SublimErlTestRunner):
 		# get current line position
 		cursor_position = self.view.sel()[0].a
 
-		# find all regions with a test function definition
-		function_regions = self.view.find_all(r"(%.*)?([a-z0-9][a-zA-Z0-9_]*_test(_)?\s*\(\s*\)\s*->[^.]*\.)")
+		region_full = sublime.Region(0, self.view.size())
+		content = SUBLIMERL.strip_comments(self.view.substr(region_full))
 
-		# loop regions
-		matching_region = None
-		for region in function_regions:
-			region_content = self.view.substr(region)
-			if not re.match(r"%.*((?:[a-z0-9][a-zA-Z0-9_]*)_test(_)?)\s*\(\s*\)\s*->", region_content):
-				# function is not commented out, is cursor included in region?
-				if region.a <= cursor_position and cursor_position <= region.b:
-					matching_region = region
-					break
-
-		# get function name
-		if matching_region != None:
-			# get function name and arguments
-			m = re.match(r"((?:[a-z0-9][a-zA-Z0-9_]*)_test(_)?)\s*\(\s*\)\s*->(?:.|\n)", self.view.substr(matching_region))
-			if m != None:
-				return m.group(1)
+		regex = re.compile(r"([a-z0-9][a-zA-Z0-9_]*_test(_)?\s*\(\s*\)\s*->[^.]*\.)", re.MULTILINE)
+		for m in regex.finditer(content):
+			if m.start() <= cursor_position and cursor_position <= m.end():
+				function_content = m.groups()[0]
+				return function_content[:function_content.index('(')]
 
 	def eunit_test(self, module_name, module_tests_name, function_name):
 		if function_name != None:
@@ -331,25 +320,14 @@ class SublimErlCtTestRunner(SublimErlTestRunner):
 		# get current line position
 		cursor_position = self.view.sel()[0].a
 
-		# find all regions with a test function definition
-		function_regions = self.view.find_all(r"(%.*)?([a-z0-9][a-zA-Z0-9_]*\s*\([\w\s_]+\)\s*->[^.]*\.)")
+		region_full = sublime.Region(0, self.view.size())
+		content = SUBLIMERL.strip_comments(self.view.substr(region_full))
 
-		# loop regions
-		matching_region = None
-		for region in function_regions:
-			region_content = self.view.substr(region)
-			if not re.match(r"%.*((?:[a-z0-9][a-zA-Z0-9_]*))\s*\([\w\s_]+\)\s*->", region_content):
-				# function is not commented out, is cursor included in region?
-				if region.a <= cursor_position and cursor_position <= region.b:
-					matching_region = region
-					break
-
-		# get function name
-		if matching_region != None:
-			# get function name and arguments
-			m = re.match(r"((?:[a-z0-9][a-zA-Z0-9_]*))\s*\([\w\s_]+\)\s*->(?:.|\n)", self.view.substr(matching_region))
-			if m != None:
-				return m.group(1)
+		regex = re.compile(r"([a-z0-9][a-zA-Z0-9_]*\s*\([\w\s_]+\)\s*->[^.]*\.)", re.MULTILINE)
+		for m in regex.finditer(content):
+			if m.start() <= cursor_position and cursor_position <= m.end():
+				function_content = m.groups()[0]
+				return function_content[:function_content.index('(')]
 
 	def ct_test(self, module_tests_name, function_name):
 		if function_name != None:
