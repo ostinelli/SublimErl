@@ -15,6 +15,10 @@ SublimErl is a plugin for the text editor [Sublime Text 2](http://www.sublimetex
 
 All within your test editor.
 
+A brief feature introduction video can be seen [here](http://www.youtube.com/watch?v=KIzxbjlHmu0):
+
+[![SublimErl screenshot](http://www.ostinelli.net/_out_images/video.png)](http://www.youtube.com/watch?v=KIzxbjlHmu0)
+
 Screenshots
 -----------
 
@@ -42,11 +46,6 @@ Usage
 * View **Common Tests results** in browser: hit `Command-Option-F8` (OSX) | `Command-Alt-F8` (Linux/Win)
 * **Goto any exported function** of your project easily: hit `Command-Option-p` (OSX) | `Command-Alt-p` (Linux/Win) and select a function
 * To access **man pages**: hit `Command-Option-i` (OSX) | `Command-Alt-i` (Linux/Win) and select a module
-
-A brief feature introduction video can be seen [here](http://www.youtube.com/watch?v=KIzxbjlHmu0):
-
-[![SublimErl screenshot](http://www.ostinelli.net/_out_images/video.png)](http://www.youtube.com/watch?v=KIzxbjlHmu0)
-
 
 Installation
 ------------
