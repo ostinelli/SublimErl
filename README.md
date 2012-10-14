@@ -43,9 +43,9 @@ Usage
 * **Goto any exported function** of your project easily: hit `Command-Option-p` (OSX) | `Command-Alt-p` (Linux/Win) and select a function
 * To access **man pages**: hit `Command-Option-i` (OSX) | `Command-Alt-i` (Linux/Win) and select a module
 
-A brief introduction video can be seen [here](http://www.youtube.com/watch?v=T0rD0CQM4Yg):
+A brief feature introduction video can be seen [here](http://www.youtube.com/watch?v=KIzxbjlHmu0):
 
-[![SublimErl screenshot](http://farm8.staticflickr.com/7263/6935974110_c07c6a6afe_b.jpg)](http://www.youtube.com/watch?v=T0rD0CQM4Yg)
+[![SublimErl screenshot](http://www.ostinelli.net/_out_images/video.png)](http://www.youtube.com/watch?v=KIzxbjlHmu0)
 
 
 Installation
