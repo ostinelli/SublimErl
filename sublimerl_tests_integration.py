@@ -262,9 +262,11 @@ class SublimErlEunitTestRunner(SublimErlTestRunner):
 
 	def compile_eunit_run_suite(self, suite, function_name=None):
 		os_cmd = '%s eunit suites=%s' % (SUBLIMERL.rebar_path, suite)
-		if function_name != None:
-			os_cmd += ' tests=%s' % function_name
+
+		if function_name != None: os_cmd += ' tests=%s' % function_name
 		if self.app_name: os_cmd += ' apps=%s' % self.app_name
+
+		os_cmd += ' skip_deps=true'
 
 		retcode, data = self.execute_os_command(os_cmd, dir_type='project', block=False)
 		# interpret
@@ -359,6 +361,8 @@ class SublimErlCtTestRunner(SublimErlTestRunner):
 			self.log("Running tests of Common Tests SUITE \"%s_SUITE.erl\".\n\n" % module_tests_name)
 			os_cmd = '%s ct suites=%s' % (SUBLIMERL.rebar_path, module_tests_name)
 
+		# complete command
+		os_cmd += ' skip_deps=true'
 		# compile all source code
 		self.compile_source()
 		# run suite
