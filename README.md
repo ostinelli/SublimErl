@@ -8,7 +8,7 @@ SublimErl is a plugin for the text editor [Sublime Text 2](http://www.sublimetex
 * Benefit from **Code Completion** ( all Erlang libs + your current project )
 * Allows you to **Auto-Indent**  your Erlang code
 * Run **Eunit** tests ( all tests for module / single test )
-* Run **Common Tests** ( all tests for module / single test )
+* Run **Common Tests** ( all tests for module )
 * Run **Dialyzer** tests ( single module )
 * **Goto any exported function** of your project easily
 * Access **man pages** from the text editor
@@ -39,8 +39,9 @@ Usage
 
 * **Code Completion**: Just type and select available options
 * **Auto-Indenting**: hit `Command-Option-L` to auto-intent an entire file
-* Run **single Eunit / CT test**: position your cursor anywhere **within** your test function and hit `Command-Shift-F8`
-* Run **all Eunit / CT tests** in file: position your cursor **outside** any test function and hit `Command-Shift-F8`
+* Run **single Eunit**: position your cursor anywhere **within** your test function and hit `Command-Shift-F8`
+* Run **all Eunit tests** in file: position your cursor **outside** any test function and hit `Command-Shift-F8`
+* Run **all CT tests** in file: view the file and hit `Command-Shift-F8`
 * Run **Dialyzer** on file: view the file and hit `Command-Shift-F9`
 * Re-Run the **previous test**: hit `Command-F8` ( you do not need to be viewing the test to launch it )
 * View **Common Tests results** in browser: hit `Command-Option-F8` (OSX) | `Command-Alt-F8` (Linux/Win)
