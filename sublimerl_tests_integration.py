@@ -306,41 +306,17 @@ class SublimErlCtTestRunner(SublimErlTestRunner):
 		else:
 			module_tests_name = SUBLIMERL.last_test
 
-		# get function name depending on cursor position
-		function_name = self.get_test_function_name()
-
 		# run test
 		this = self
 		class SublimErlThread(threading.Thread):
 			def run(self):
-				this.ct_test(module_tests_name, function_name)
+				this.ct_test(module_tests_name)
 		SublimErlThread().start()
 
-	def get_test_function_name(self):
-		# get current line position
-		cursor_position = self.view.sel()[0].a
-
-		region_full = sublime.Region(0, self.view.size())
-		content = SUBLIMERL.strip_comments(self.view.substr(region_full))
-
-		regex = re.compile(r"([a-z0-9][a-zA-Z0-9_]*\s*\([\w\s_]+\)\s*->[^.]*\.)", re.MULTILINE)
-		for m in regex.finditer(content):
-			if m.start() <= cursor_position and cursor_position <= m.end():
-				function_content = m.groups()[0]
-				return function_content[:function_content.index('(')]
-
-	def ct_test(self, module_tests_name, function_name):
-		if function_name != None:
-			# run CT for suite and case
-			self.log("Running test \"%s/1\" of Common Tests SUITE \"%s_SUITE.erl\".\n\n" % (function_name, module_tests_name))
-			os_cmd = '%s ct suites=%s case=%s' % (SUBLIMERL.rebar_path, module_tests_name, function_name)
-		else:
-			# run CT for suite
-			self.log("Running tests of Common Tests SUITE \"%s_SUITE.erl\".\n\n" % module_tests_name)
-			os_cmd = '%s ct suites=%s' % (SUBLIMERL.rebar_path, module_tests_name)
-
-		# complete command
-		os_cmd += ' skip_deps=true'
+	def ct_test(self, module_tests_name):
+		# run CT for suite
+		self.log("Running tests of Common Tests SUITE \"%s_SUITE.erl\".\n\n" % module_tests_name)
+		os_cmd = '%s ct suites=%s skip_deps=true' % (SUBLIMERL.rebar_path, module_tests_name)
 		# compile all source code
 		self.compile_source()
 		# run suite
