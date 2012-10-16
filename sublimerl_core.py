@@ -146,9 +146,25 @@ class SublimErlGlobal():
 
 		return True
 
+	def strip_code_for_parsing(self, code):
+		code = self.strip_comments(code)
+		code = self.strip_quoted_content(code)
+		return self.strip_record_with_dots(code)
+
 	def strip_comments(self, code):
 		# strip comments but keep the same character count
 		return re.sub(re.compile(r"%(.*)\n"), lambda m: (len(m.group(0)) - 1) * ' ' + '\n', code)
+
+	def strip_quoted_content(self, code):
+		# strip quoted content
+		regex = re.compile(r"(\"([^\"]*)\")", re.MULTILINE + re.DOTALL)
+		for m in regex.finditer(code):
+			code = code[:m.start()] + (len(m.groups()[0]) * ' ') + code[m.end():]
+		return code
+
+	def strip_record_with_dots(self, code):
+		# strip records with dot notation
+		return re.sub(re.compile(r"(\.[a-z]+)"), lambda m: len(m.group(0)) * ' ', code)
 
 	def get_erlang_module_name(self, view):
 		# find module declaration and get module name

@@ -224,12 +224,12 @@ class SublimErlEunitTestRunner(SublimErlTestRunner):
 	def get_test_function_name(self):
 		# get current line position
 		cursor_position = self.view.sel()[0].a
-
+		# get module content
 		region_full = sublime.Region(0, self.view.size())
-		content = SUBLIMERL.strip_comments(self.view.substr(region_full))
-
+		module = SUBLIMERL.strip_code_for_parsing(self.view.substr(region_full))
+		# parse regions
 		regex = re.compile(r"([a-z0-9][a-zA-Z0-9_]*_test(_)?\s*\(\s*\)\s*->[^.]*\.)", re.MULTILINE)
-		for m in regex.finditer(content):
+		for m in regex.finditer(module):
 			if m.start() <= cursor_position and cursor_position <= m.end():
 				function_content = m.groups()[0]
 				return function_content[:function_content.index('(')]
