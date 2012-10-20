@@ -328,16 +328,15 @@ class SublimErlCtTestRunner(SublimErlTestRunner):
 		# get outputs
 		if re.search(r"DONE.", data):
 			# test passed
-			passed_count = re.search(r"(\d+) ok, 0 failed of \d+ test cases", data).group(1)
+			passed_count = re.search(r"(\d+) ok, 0 failed(?:, 1 skipped)? of \d+ test cases", data).group(1)
 			if int(passed_count) > 0:
 				self.log("=> %s TEST(S) PASSED.\n" % passed_count)
 			else:
 				self.log("=> NO TESTS TO RUN.\n")
 
 		elif re.search(r"ERROR: One or more tests failed", data):
-			failed_count = re.search(r"\d+ ok, (\d+) failed of \d+ test cases", data).group(1)
+			failed_count = re.search(r"\d+ ok, (\d+) failed(?:, 1 skipped)? of \d+ test cases", data).group(1)
 			self.log("\n=> %s TEST(S) FAILED.\n" % failed_count)
-			self.log("** Hint: hit Ctrl-Alt-F8 (by default) to show a browser with Common Tests' results. **\n")
 
 		else:
 			self.log("\n=> TEST(S) FAILED.\n")
@@ -356,7 +355,7 @@ class SublimErlTestRunners():
 		test_runner.start_test()
 
 	def ct_or_eunit_test(self, view, new=True):
-		if SUBLIMERL.get_erlang_module_name(view).find("_SUITE") != -1:
+		if SUBLIMERL.last_test_type == 'ct' or SUBLIMERL.get_erlang_module_name(view).find("_SUITE") != -1:
 			# ct
 			test_runner = SublimErlCtTestRunner(view)
 		else:
