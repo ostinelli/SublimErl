@@ -66,9 +66,17 @@
       <key>comment</key>
       <string>test fail</string>
       <key>match</key>
-      <string>.*(/|\\)[a-zA-Z0-9_]+.erl:\d+</string>
+      <string>.*(/|\\)[a-zA-Z0-9_]+.erl:\d+: Error</string>
       <key>name</key>
       <string>test.fail</string>
+    </dict>
+    <dict>
+      <key>comment</key>
+      <string>test warning</string>
+      <key>match</key>
+      <string>.*(/|\\)[a-zA-Z0-9_]+.erl:\d+: Warning</string>
+      <key>name</key>
+      <string>test.warning</string>
     </dict>
     <dict>
       <key>comment</key>
@@ -83,6 +91,14 @@
       <string>test expected</string>
       <key>match</key>
       <string>\{value,[^}]*}</string>
+      <key>name</key>
+      <string>test.expected</string>
+    </dict>
+    <dict>
+      <key>comment</key>
+      <string>test expected</string>
+      <key>match</key>
+      <string>Reason: .*</string>
       <key>name</key>
       <string>test.expected</string>
     </dict>
