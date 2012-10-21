@@ -73,7 +73,7 @@ class SublimErlTestRunner(SublimErlProjectLoader):
 			self.window.run_command("show_panel", {"panel": "output.%s" % self.panel_name})
 
 	def log(self, text):
-		self.panel_buffer += text
+		self.panel_buffer += text.encode('utf-8')
 		sublime.set_timeout(self.update_panel, 0)
 
 	def log_error(self, error_text):
