@@ -283,7 +283,7 @@ class SublimErlLibParser():
 		current_params = []
 		lineno = 0
 		# get params
-		regex = re.compile(r"%s\((.*)\)\s*->" % fun[0], re.MULTILINE)
+		regex = re.compile(r"%s\((.*)\)\s*->" % re.escape(fun[0]), re.MULTILINE)
 		for m in regex.finditer(module):
 			params = m.groups()[0]
 			# strip out the eventual condition part ('when')
