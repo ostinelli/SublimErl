@@ -58,8 +58,8 @@ class SublimErlLibParser():
 				rel_dirs.append(root)
 			# loop filenames ending in .erl
 			for filename in fnmatch.filter(filenames, r"*.erl"):
-				if 'src' in root.split('/'):
-					# source file in a src directory
+				if '.eunit' not in root.split('/'):
+					# exclude eunit files
 					filepath = os.path.join(root, filename)
 					# check if in release directory
 					if not (True in [filepath.find(rel_dir) != -1 for rel_dir in rel_dirs]):

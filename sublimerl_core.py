@@ -240,8 +240,8 @@ class SublimErlProjectLoader():
 		self.test_root = os.path.abspath(file_test_root)
 
 	def find_project_roots(self, current_dir, project_root_candidate=None, file_test_root_candidate=None):
-		# if rebar.config or a src directory exists, save as potential candidate
-		if os.path.exists(os.path.join(current_dir, 'rebar.config')) or os.path.exists(os.path.join(current_dir, 'src')):
+		# if rebar.config or an ebin directory exists, save as potential candidate
+		if os.path.exists(os.path.join(current_dir, 'rebar.config')) or os.path.exists(os.path.join(current_dir, 'ebin')):
 			# set project root candidate
 			project_root_candidate = current_dir
 			# set test root candidate if none set yet
