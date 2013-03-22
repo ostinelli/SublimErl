@@ -39,7 +39,7 @@ class SublimErlGlobal():
 	def __init__(self):
 		# default
 		self.initialized = False
-		self.init_error = None
+		self.init_errors = []
 
 		self.plugin_path = None
 		self.completions_path = None
@@ -110,7 +110,7 @@ class SublimErlGlobal():
 	def set_paths(self):
 
 		def log(message):
-			self.init_error = message
+			self.init_errors.append(message)
 			print "SublimErl Init Error: %s" % message
 
 		def test_path(path):
@@ -321,7 +321,14 @@ class SublimErlProjectLoader():
 class SublimErlTextCommand(sublime_plugin.TextCommand):
 	def run(self, edit):
 		# run only if context matches
-		if self._context_match(): return self.run_command(edit)
+		if self._context_match():
+			# check
+			if SUBLIMERL.initialized == False:
+				# self.log("SublimErl could not be initialized:\n\n%s\n" % '\n'.join(SUBLIMERL.init_errors))
+				print "SublimErl could not be initialized:\n\n%s\n" % '\n'.join(SUBLIMERL.init_errors)
+				return
+			else:
+				return self.run_command(edit)
 
 	def _context_match(self):
 		# context matches if lang is source.erlang and if platform is not windows

@@ -77,6 +77,8 @@ class SublimErlAutocompilerListener(sublime_plugin.EventListener):
 
 	# CALLBACK ON VIEW SAVE
 	def on_post_save(self, view):
+		# check init successful
+		if SUBLIMERL.initialized == False: return
 		# ensure context matches
 		caret = view.sel()[0].a
 		if not ('source.erlang' in view.scope_name(caret) and sublime.platform() != 'windows'): return

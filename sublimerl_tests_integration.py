@@ -81,7 +81,7 @@ class SublimErlTestRunner(SublimErlProjectLoader):
 
 	def init_tests(self):
 		if SUBLIMERL.initialized == False:
-			self.log("SublimErl could not be initialized:\n%s\n" % SUBLIMERL.init_error)
+			self.log("SublimErl could not be initialized:\n\n%s\n" % '\n'.join(SUBLIMERL.init_errors))
 
 		# file saved?
 		if self.view.is_scratch():

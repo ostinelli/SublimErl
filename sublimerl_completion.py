@@ -48,6 +48,8 @@ SUBLIMERL_COMPLETIONS = {
 class SublimErlModuleNameCompletions():
 
 	def set_completions(self):
+		# if errors occurred
+		if SUBLIMERL.plugin_path == None: return
 		# load json
 		completions_full_path = os.path.join(SUBLIMERL.plugin_path, 'completion', 'Erlang-Libs.sublime-completions.full')
 		if os.path.exists(completions_full_path):
@@ -205,6 +207,8 @@ class SublimErlCompletionsListener(sublime_plugin.EventListener):
 
 	# CALLBACK ON VIEW SAVE
 	def on_post_save(self, view):
+		# check init successful
+		if SUBLIMERL.initialized == False: return
 		# ensure context matches
 		caret = view.sel()[0].a
 		if not ('source.erlang' in view.scope_name(caret) and sublime.platform() != 'windows'): return
@@ -219,6 +223,8 @@ class SublimErlCompletionsListener(sublime_plugin.EventListener):
 
 	# CALLBACK ON VIEW LOADED
 	def on_load(self, view):
+		# check init successful
+		if SUBLIMERL.initialized == False: return
 		# only trigger within erlang
 		caret = view.sel()[0].a
 		if not ('source.erlang' in view.scope_name(caret) and sublime.platform() != 'windows'): return
@@ -233,6 +239,8 @@ class SublimErlCompletionsListener(sublime_plugin.EventListener):
 
 	# CALLBACK ON QUERY COMPLETIONS
 	def on_query_completions(self, view, prefix, locations):
+		# check init successful
+		if SUBLIMERL.initialized == False: return
 		# only trigger within erlang
 		if not view.match_selector(locations[0], "source.erlang"): return []
 
