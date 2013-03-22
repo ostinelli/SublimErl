@@ -1,7 +1,7 @@
 # ==========================================================================================================
 # SublimErl - A Sublime Text 2 Plugin for Erlang Integrated Testing & Code Completion
 #
-# Copyright (C) 2012, Roberto Ostinelli <roberto@ostinelli.net>.
+# Copyright (C) 2013, Roberto Ostinelli <roberto@ostinelli.net>.
 # All rights reserved.
 #
 # BSD License

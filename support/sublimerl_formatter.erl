@@ -4,7 +4,7 @@
 %% ==========================================================================================================
 %% SublimErl - A Sublime Text 2 Plugin for Erlang Integrated Testing & Code Completion
 %%
-%% Copyright (C) 2012, Roberto Ostinelli <roberto@ostinelli.net>, code for indenting taken and adapted from
+%% Copyright (C) 2013, Roberto Ostinelli <roberto@ostinelli.net>, code for indenting taken and adapted from
 %%    <https://github.com/jimenezrick/vimerl/blob/master/indent/erlang_indent.erl> by Ricardo Catalinas
 %%    Jiménez, who has agreed to release this portion of code in BSD license.
 %% All rights reserved.

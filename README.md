@@ -116,3 +116,8 @@ or, for example, a more complex project structure defined in rebar.conf:
        |-- dep2
    |-- ...
 ```
+
+Known issues
+------------
+
+We have had reports that some plugin functionalities experience unwanted behaviour (freezing) with the Erlang precompiled package provided by Erlang Solutions, see [issue #56](https://github.com/ostinelli/SublimErl/issues/56). We're looking into this.

@@ -1,5 +1,9 @@
 # SublimErl Changelog
 
+### 0.5.1:
+ * added display error if plugin initializations are found
+ * improved code search
+
 ### 0.5:
  * added function search
  * added error panel when compilation errors are encountered
